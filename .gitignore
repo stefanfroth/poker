@@ -107,15 +107,8 @@ venv.bak/
 # .DS_Store
 .DS_Store
 
-# Prevent the input files from being uploaded (because of copyright reasons)
-Challenge_for_Analysts_2019.pdf
-data/prices.xlsx
-data/sales_data.xlsx
-
 # Prevent the lecture files from being uploaded
-lectures/*
-
-# For every week create a "private" file with stuff that is not supposed to be uploaded to github
-*/private
+concepts/*
+theory/*
 =======
 >>>>>>> Initial commit
