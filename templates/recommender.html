@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+
+<head>
+  <meta charset="utf-8">
+  <title></title>
+</head>
+
+<body>
+
+  <h1> Recommendations:</h1>
+  <ul>
+    <li>Star Wars</li>
+    <li>Titanic</li>
+    <li>Mean Girls</li>
+  </ul>
+  <h2> Just kidding, here are the real ones: </h2>
+  <ul>
+    {% for m in movies %}
+    <li>{{ m }}</li>
+    {% endfor %}
+  <ul>
+      <p>
+        <a href="/">Go back to main page</a>
+      </p>
+
+</body>
+
+</html>

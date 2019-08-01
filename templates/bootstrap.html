@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <title>Movie Recommender!</title>
+  </head>
+
+  <body>
+
+    <!-- I REMOVED A . FROM NAVBAR WHICH RESPACED MY OPTIONS NICELY -->
+    <!-- WE CAN ALSO SIMPLIY THE PATH IN THE HREF HERE TO POINT LOCALLY -->
+    <div class='navbar bg-dark text-light'>
+      <a class ='text-light' href="/">Home</a>
+      <a class ='text-light' href="/train">Retrain my AI!</a>
+    </div>
+
+    <!-- WRAP EVERYTHING IN CONTAINERS IN THE SITE BECAUSE FORMATTING IS EASIER-->
+  <div class="container">
+    <img class="rounded mx-auto d-block mt-2" style="width: 339px; height: 226px !important;" src="http://www.media3.hw-static.com/media/2017/05/wenn_snoopdogg_051717_1800x1200-1800x1200.jpg" alt="wenn_snoopdogg_051717_1800x1200" width="728" height="485" data-src="http://www.media3.hw-static.com/media/2017/05/wenn_snoopdogg_051717_1800x1200-1800x1200.jpg">
+  </div>
+
+    <div class = "container mt-1">
+    <div class = "jumbotron bg-danger text-light mt-3 mr-1 mb-1 ml-1">
+      <h1 class='text-center'> Welcome to our awesome movie recommender! </h1>
+      <hr class="my-4">
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum</p>
+    </div>
+    </div>
+
+  <div class="container">
+    <div class="row">
+      <div class="col-sm">
+        <p class="">First movie = {{movie1}}</p>
+      </div>
+      <div class="col-sm">
+        <h1 class='bg-danger text-dark'>Second movie = {{movie2}}</h1>
+      </div>
+      <div class="col-sm">
+        <h1>Third movie = {{movie3}}</h1>
+      </div>
+    </div>
+</div>
+
+
+<div class = "container">
+  <p>Please rate the following movies:</p>
+
+  <form action='/recommender'>
+    <div class='form-group'>
+        <input class="form-control" name='Dark Skies' autocomplete='off' placeholder='Rate Dark Skies'><br>
+    </div>
+    <div class='form-group'>
+        <input class="form-control" name='Beasts of no Nation' autocomplete='off' placeholder='Beasts of no Nation'><br>
+    </div>
+    <div class='form-group'>
+        <input class="form-control" name='Inception' autocomplete='off' placeholder='Rate Inception'><br>
+    </div>
+    <input class = 'input-submit' type='submit' value='Get Recommendations!'>
+  </form>
+
+</div>
+
+
+<div class = "container mt-5 mb-2">
+<footer class = "bg-danger text-white">
+    <div class = "container">
+        &copy; 2019 SIGMOID_SAFFRON
+    </div>
+</footer>
+</div>
+
+
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  </body>
+</html>
