@@ -1,11 +1,12 @@
 from flask import Flask
-#from flask import render_template, request
+from flask import render_template, request
 from poker import Card, Player, Game, Evaluator
 
 app = Flask(__name__)
 
 @app.route('/')
-def hello_world():
+def start_page():
+    g = Game(3, 100, 10000, 200)
     return render_template('bootstrap.html')
 
 #@app.route('/recommender')

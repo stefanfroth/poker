@@ -429,12 +429,15 @@ class Game:
 
             if (self.position_small) < (self.nr_of_players-1):
                 order = [self.position_small, self.position_small+1]
-            else:
+            else:# (self.position_small) == (self.nr_of_players-1):
                 order = [self.position_small, 0]
+            #else:
+            #    self.position_small = 0
+            #    order = [self.position_small, self.position_small+1]
 
             #print(f'The order is {order}')
             add = list(range(self.nr_of_players))
-            #print(order)
+            print(order)
             #print(add)
             [add.remove(x) for x in order]
             #print(add)
@@ -720,14 +723,21 @@ class Game:
         '''
 
         # determine who won the round
-        best_hands = []
-        for player in self.players:
-            if player.active == 1:
-                best_hands.append(player.evaluate_hand())
-        winning_hand = sorted(best_hands, key=lambda x: (x[2], x[3]), reverse=False)[0]
-        print(f'Player {winning_hand[5]} wins with a {winning_hand[1]}. \
-        His hand is {winning_hand[4]}')
-        self.winner = winning_hand[5]
+        if self.active_players>1:
+            best_hands = []
+            for player in self.players:
+                if player.active == 1:
+                    best_hands.append(player.evaluate_hand())
+            winning_hand = sorted(best_hands, key=lambda x: (x[2], x[3]), reverse=False)[0]
+            print(f'Player {winning_hand[5]} wins with a {winning_hand[1]}. \
+            His hand is {winning_hand[4]}')
+            self.winner = winning_hand[5]
+        else:
+            for player in self.players:
+                if player.active == 1:
+                    self.winner = player.name
+                    print(f'Player {self.winner} wins because everyone else dropped\
+                    out.')
 
         # distribute the pot
         self.pot = self.determine_pot_size()
@@ -754,7 +764,11 @@ class Game:
 
         # increase the small blind position
         # this is currently incorrect because we have to go in a circle
-        self.position_small += 1
+        if self.position_small == self.nr_of_players-1:
+            self.position_small = 0
+        else:
+            self.position_small += 1
+
 
         # reset highest_bid
         self.highest_bid = 0
@@ -778,11 +792,14 @@ class Game:
         self.create_deck()
         self.deal_cards()
         self.action_first_timestep()
-        self.deal_flop()
-        self.action_second_timestep()
-        self.deal_turn()
-        self.action_third_timestep()
-        self.deal_river()
+        if self.active_players>1:
+            self.deal_flop()
+            self.action_second_timestep()
+            if self.active_players>1:
+                self.deal_turn()
+                self.action_third_timestep()
+                if self.active_players>1:
+                    self.deal_river()
         self.pass_to_next_round()
 
     def __repr__(self):

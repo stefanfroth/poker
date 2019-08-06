@@ -110,5 +110,7 @@ venv.bak/
 # Prevent the lecture files from being uploaded
 concepts/*
 theory/*
+
+todo.txt
 =======
 >>>>>>> Initial commit
