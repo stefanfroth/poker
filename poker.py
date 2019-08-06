@@ -1,6 +1,6 @@
 '''
 The module poker contains all the classes, attributes and methods to play
-a round of poker.
+a game of poker.
 '''
 
 
@@ -248,7 +248,7 @@ class Evaluator:
 class Player():
     '''
     The class Player represents a player in a poker game.
-    The player has an initial stack of money and at the beginning of each round
+    The player has an initial stack of money and at the beginning of each game
     she is dealt two cards. She decides on her actions given her cards.
     '''
 
@@ -259,8 +259,7 @@ class Player():
         self.name = name
         self.own_bid = 0
         self.active = 1
-        self.actions = ['fold', 'call', 'raise']
-        self.last_action = ''
+        self.last_actions = []
         self.best_hand = []
         self.handrankorder = {'straightflush': 1, 'four-of-a-kind': 2, 'full-house': 3,
                               'flush': 4, 'straight': 5, 'three-of-a-kind': 6,
@@ -268,31 +267,42 @@ class Player():
         self.cardrankorder = {'a': 1, 'k': 2, 'q': 3, 'j': 4, '10': 5, '9': 6,
                               '8': 7, '7': 8, '6': 9, '5': 10,
                               '4': 11, '3': 12, '2': 13}
+        self.actions = {'fold': 0, 'small blind': 1, 'big blind': 2,
+                        'check': 3, 'call': 4, 'raise': 5}
 
 
     def fold(self):
         '''
         The player folds.
         '''
-        self.last_action = 'fold'
+        self.last_actions.append(0)
         self.active = 0
         print(f'Player {self.name}: My cards are sh..! I fold!')
+
+
+    def check(self):
+        '''
+        The player checks.
+        '''
+        self.last_actions.append(3)
+        print(f'Player {self.name}: I am curious what is going to happen.\
+            I am checking!')
 
 
     def call(self, highest_bid):
         '''
         The player calls.
         '''
-        self.last_action = 'call'
+        self.last_actions.append(4)
         self.own_bid = highest_bid
-        print(f'Player {self.name}: I think I can win this round. I am calling!')
+        print(f'Player {self.name}: I think I can win this game. I am calling!')
 
 
     def raise_bet(self, highest_bid, limit):
         '''
         The player raises the highest_bid.
         '''
-        self.last_action = 'raise'
+        self.last_actions.append(5)
         self.own_bid = highest_bid + limit
 
 
@@ -303,34 +313,27 @@ class Player():
         '''
         if blind == 'small': # was, wenn er nicht mehr genug Geld für den small blind hat?
             self.own_bid = self.blind
-            self.last_action = 'raise'
+            self.last_actions.append(1)
             print(f'Player {self.name}: I have bet the small blind of ${self.blind}!')
         elif blind == 'big': # was, wenn er nicht mehr genug Geld für den big blind hat?
             self.own_bid = self.blind * 2
-            self.last_action = 'raise'
+            self.last_actions.append(2)
             print(f'Player {self.name}: I have bet the big blind of ${self.blind*2}!')
         else:
             if self.own_bid < highest_bid:
                 action = random.choice(['fold', 'call', 'raise'])
             else:
-                action = random.choice(['call', 'raise'])
+                action = random.choice(['check', 'raise'])
             #print(f'Player {self.name} chose action {action}.')
             if action == 'fold':
                 self.fold()
+            elif action == 'check':
+                self.check()
             elif action == 'call':
                 self.call(highest_bid)
             else:
                 self.raise_bet(highest_bid, limit)
-            print(f'Player {self.name}: I have {self.last_action} and am betting ${self.own_bid}!')
-
-
-    # # after introducing fold this is not needed anymore
-    # def set_inactive(self):
-    #     '''
-    #     This function sets the player inactive if he is not willing to increase
-    #     his bid to the highest bid.
-    #     '''
-    #     self.active = 0
+            print(f'Player {self.name}: I have {self.last_actions[-1]} and am betting ${self.own_bid}!')
 
 
     def evaluate_hand(self):
@@ -372,7 +375,7 @@ class Game:
     This class takes as input:
 
     nr_of_players: the number of players that will participate in the game
-    limit: the limit of the bets in each round
+    limit: the limit of the bets in each game
     blind: the size of the big blind
     stack: the size of the initial stack of the game
 
@@ -390,7 +393,7 @@ class Game:
         self.order = list(range(nr_of_players))
         self.position_small = 0
         self.highest_bid = 0
-        self.timestep = 0
+        self.round = 0
         self.game_count = 1
         self.active_players = nr_of_players
         self.flop = []
@@ -419,7 +422,7 @@ class Game:
 
     def determine_order(self):
         '''
-        The function determine_order() determines the order of bidding in each round
+        The function determine_order() determines the order of bidding in each game
         '''
         if self.game_count != 1:
             order = []
@@ -431,9 +434,6 @@ class Game:
                 order = [self.position_small, self.position_small+1]
             else:# (self.position_small) == (self.nr_of_players-1):
                 order = [self.position_small, 0]
-            #else:
-            #    self.position_small = 0
-            #    order = [self.position_small, self.position_small+1]
 
             #print(f'The order is {order}')
             add = list(range(self.nr_of_players))
@@ -457,10 +457,10 @@ class Game:
         print(f'The order is {self.order}')
 
 
-    def check_activity_timestep(self):
+    def check_activity_round(self):
         '''
-        The function check_activity_timestep checks whether the betting in the
-        current timestep is still active.
+        The function check_activity_round checks whether the betting in the
+        current round is still active.
         '''
         highest = 0
         self.active_players = self.nr_of_players
@@ -474,8 +474,8 @@ class Game:
 #        print(f'{highest} players are betting the highest bid and {self.active_players} players are active')
         if highest == self.active_players and self.active_players >= 1:
 
-            # increase the timestep by one
-            self.timestep += 1
+            # increase the round by one
+            self.round += 1
 
             return True
 
@@ -508,7 +508,7 @@ class Game:
 
     def eliminate_players(self):
         '''
-        The function eliminate_players eliminates, after each round,
+        The function eliminate_players eliminates, after each game,
         the players that did not call or raise.
         '''
         eliminated_players = 0
@@ -548,7 +548,37 @@ class Game:
             #assert len(player.hand) == 2
 
 
-    def action_first_timestep(self):
+    def iterative_play(self):
+        '''
+        The function iterative_play is called when the players enter in a phase
+        of iterative play.
+        '''
+
+        check_activity_round = False
+
+        # run until the round is exhaustively played
+        while not check_activity_round:
+#            print('entered while loop')
+#            print(f'We have to go on playing with {self.active_players}')
+            for position in self.order:
+#                print('entered for loop')
+                if self.players[position].own_bid < self.highest_bid\
+                and self.players[position].active == 1:
+                    print(f'The highest bid is {self.highest_bid}')
+                    self.players[position].do(self.highest_bid, self.limit)
+                    if self.players[position].own_bid > self.highest_bid:
+                        self.highest_bid = self.players[position].own_bid
+                    # need to include some way to stop the game here
+                    if self.check_end_of_game() == 0:
+                        pass
+                    #print(f'player {position+1} plays {self.players[position].own_bid}')
+            check_activity_round = self.check_activity_round()
+#            print(check_activity_round)
+#            print(not check_activity_round)
+
+
+
+    def action_first_round(self):
         '''
         The function action calls all agents sequentially to decide on their action
         '''
@@ -560,54 +590,26 @@ class Game:
         self.highest_bid = self.players[self.order[1]].own_bid
         #print(f'The highest bid after the big blind is {self.highest_bid}')
 
-
-        # create a list of players who do not have to play the blind
-        # there is a mistake in here because the small blind player will not increase his bid to the big blind
-        no_blind = list(range(self.nr_of_players))
-        no_blind.remove(self.order[0])
-        no_blind.remove(self.order[1])
-        no_blind.append(self.order[0])
-
-        #print(f'the no_blind is {no_blind}')
-        for position in no_blind:
+        # let the non-blind players take their turn
+        for position in self.order[2:]:
             self.players[position].do(self.highest_bid, self.limit)
             #print(f'player {position+1} bet {self.players[position].own_bid}')
             if self.players[position].own_bid > self.highest_bid:
                 self.highest_bid = self.players[position].own_bid
 
-        #print(f'player 1s bid is {self.players[0].own_bid} and player 2 {self.players[1].own_bid}')
         # eliminate players that folded
         self.active_players = self.eliminate_players()
 
-
-        # check if the timestep is still active
-        check_activity_timestep = self.check_activity_timestep()
-        if check_activity_timestep:
-            return print(f'The first timestep is over and {self.active_players}\
+        # check if the round is still active
+        check_activity_round = self.check_activity_round()
+        if check_activity_round:
+            return print(f'round {self.round} is over and {self.active_players}\
             players are still in the game!')
 
+        # play iterative_play
+        self.iterative_play()
 
-        # run until the timestep is exhaustively played
-        while not check_activity_timestep:
-#            print('entered while loop')
-#            print(f'We have to go on playing with {self.active_players}')
-            for position in self.order:
-#                print('entered for loop')
-                if self.players[position].own_bid < self.highest_bid\
-                and self.players[position].active == 1:
-                    print(f'The highest bid is {self.highest_bid}')
-                    self.players[position].do(self.highest_bid, self.limit)
-                    if self.players[position].own_bid > self.highest_bid:
-                        self.highest_bid = self.players[position].own_bid
-                    # need to include some way to stop the round here
-                    if self.check_end_of_game() == 0:
-                        pass
-                    #print(f'player {position+1} plays {self.players[position].own_bid}')
-            check_activity_timestep = self.check_activity_timestep()
-#            print(check_activity_timestep)
-#            print(not check_activity_timestep)
-
-        return print(f'The first round is over and {self.active_players} players\
+        return print(f'round {self.round} is over and {self.active_players} players\
         are still in the game')
 
 
@@ -624,39 +626,13 @@ class Game:
                 .format(player.name, [(card.face, card.suit) for card in player.hand]))
 
 
-    def action_second_timestep(self):
+    def action_second_round(self):
         '''
-        The function action_second_timestep calls the players to execute their
+        The function action_second_round calls the players to execute their
         action after observing the flop
         '''
-        for position in self.order:
-            if self.players[position].active == 1:
-                self.players[position].do(self.highest_bid, self.limit)
-                #print(f'player {position} bid {self.players[position].own_bid}')
-                if self.players[position].own_bid > self.highest_bid:
-                    self.highest_bid = self.players[position].own_bid
 
-        # check if the timestep is still active
-        check_activity_timestep = self.check_activity_timestep()
-        if check_activity_timestep:
-            return print(f'The second timestep is over and {self.active_players}\
-             players are still in the game!')
-
-        # run until the timestep is exhaustively played
-        while not check_activity_timestep:
-#            print(f'We have to go on playing with {self.active_players}')
-#            print(not)
-            for position in self.order:
-                if self.players[position].own_bid < self.highest_bid\
-                and self.players[position].active == 1:
-                    print(f'the highest bid is {self.highest_bid}')
-                    self.players[position].do(self.highest_bid, self.limit)
-                    if self.players[position].own_bid > self.highest_bid:
-                        self.highest_bid = self.players[position].own_bid
-                    # need to include some way to stop the round here
-                    if self.check_end_of_game() == 0:
-                        pass
-            check_activity_timestep = self.check_activity_timestep()
+        self.iterative_play()
 
         return print(f'The second round is over and {self.active_players} \
         players are still in the game')
@@ -671,37 +647,12 @@ class Game:
         print(f'The cards after the turn are: {self.flop}')
 
 
-    def action_third_timestep(self):
+    def action_third_round(self):
         '''
-        The function action_second_timestep calls the players to execute their
+        The function action_second_round calls the players to execute their
         action after observing the fourth card.
         '''
-        for position in self.order:
-            if self.players[position].active == 1:
-                self.players[position].do(self.highest_bid, self.limit)
-                #print(f'player {position} bid {self.players[position].own_bid}')
-                if self.players[position].own_bid > self.highest_bid:
-                    self.highest_bid = self.players[position].own_bid
-
-        # check if the timestep is still active
-        check_activity_timestep = self.check_activity_timestep()
-        if check_activity_timestep:
-            return print(f'The third timestep is over and {self.active_players} \
-             players are still in the game!')
-
-        # run until the timestep is exhaustively played
-        while not self.check_activity_timestep:
-            print(f'We have to go on playing with {self.active_players}')
-            for position in self.order:
-                if self.players[position].own_bid < self.highest_bid and self.players[position].active == 1:
-                    #print(f'the highest bid is {self.highest_bid}')
-                    self.players[position].do(self.highest_bid, self.limit)
-                    if self.players[position].own_bid > self.highest_bid:
-                        self.highest_bid = self.players[position].own_bid
-                    # need to include some way to stop the round here
-                    if self.check_end_of_game() == 0:
-                        pass
-            check_activity_timestep = self.check_activity_timestep()
+        self.iterative_play()
 
         print(f'The third round is over and {self.active_players} \
         players are still in the game')
@@ -716,13 +667,17 @@ class Game:
         print(f'The cards after the river are: {self.flop}')
 
 
-    def pass_to_next_round(self):
+    def write_data(self):
+        pass
+
+
+    def pass_to_next_game(self):
         '''
-        The function pass_to_next_round finishes of one round of poker and
+        The function pass_to_next_game finishes of one game of poker and
         starts the new one.
         '''
 
-        # determine who won the round
+        # determine who won the game
         if self.active_players>1:
             best_hands = []
             for player in self.players:
@@ -746,17 +701,17 @@ class Game:
 
         for player in self.players:
             player.stack -= player.own_bid
-            print(f"Player {player.name}'s stack after round {self.game_count} \
+            print(f"Player {player.name}'s stack after game {self.game_count} \
             is {player.stack}.")
 
         # set pot to zero again
         self.pot = 0
 
-        # increase round count
+        # increase game count
         self.game_count += 1
 
-        # reset timesteps
-        self.timestep = 0
+        # reset rounds
+        self.round = 0
 
         # reset all players to be active
         for player in self.players:
@@ -780,31 +735,32 @@ class Game:
         self.flop = []
 
         # create a new deck and shuffle it
-        # currently done through the create_deck() function at the beginning of the play_one_complete_round() function.
+        # currently done through the create_deck() function at the beginning of the play_one_complete_game() function.
 
 
-    def play_one_complete_round(self):
+    def play_one_complete_game(self):
         '''
-        This function simulates a complete round of poker without all the steps
+        This function simulates a complete game of poker without all the steps
         in between.
         '''
         self.determine_order()
         self.create_deck()
         self.deal_cards()
-        self.action_first_timestep()
+        self.action_first_round()
         if self.active_players>1:
             self.deal_flop()
-            self.action_second_timestep()
+            self.action_second_round()
             if self.active_players>1:
                 self.deal_turn()
-                self.action_third_timestep()
+                self.action_third_round()
                 if self.active_players>1:
                     self.deal_river()
-        self.pass_to_next_round()
+        self.write_data()
+        self.pass_to_next_game()
 
     def __repr__(self):
-        return '''The game is in timestep {} and in round {}. The highest bid is {}.\
+        return '''The game is in round {} and in game {}. The highest bid is {}.\
         The position of the small blind is {}. \
         The total money in the pot will yet have to be created.\
         \n The players who are still in the game will have to be created.
-        '''.format(self.timestep+1, self.game_count, self.highest_bid, self.position_small+1)
+        '''.format(self.round+1, self.game_count, self.highest_bid, self.position_small+1)
