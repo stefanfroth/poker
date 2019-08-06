@@ -108,7 +108,7 @@ venv.bak/
 .DS_Store
 
 # Prevent the lecture files from being uploaded
-concepts/*
+concept/*
 theory/*
 
 todo.txt
