@@ -9,7 +9,13 @@ import numpy as np
 import itertools
 from collections import namedtuple
 import random
+import sqlalchemy as sqa
+import pandas as pd
 
+
+# establish a connection to the database
+db = f'postgres://localhost/{"poker"}'
+engine = sqa.create_engine(db)
 
 
 class Card:
@@ -393,7 +399,7 @@ class Game:
         self.order = list(range(nr_of_players))
         self.position_small = 0
         self.highest_bid = 0
-        self.round = 0
+        self.round = 1
         self.game_count = 1
         self.active_players = nr_of_players
         self.flop = []
@@ -409,6 +415,8 @@ class Game:
         for p in range(self.nr_of_players):
             player = Player(self.stack, self.blind, p+1)
             self.players.append(player)
+
+        self.output = pd.DataFrame()
 
 
     def create_deck(self):
@@ -497,6 +505,7 @@ class Game:
         if active == 1:
             print('The game has ended')
             self.winner = ap
+            self.active_players = self.eliminate_players()
             return 0
         if active == 0:
             print('Something went wrong')
@@ -558,24 +567,204 @@ class Game:
 
         # run until the round is exhaustively played
         while not check_activity_round:
-#            print('entered while loop')
+            print('entered while loop')
 #            print(f'We have to go on playing with {self.active_players}')
-            for position in self.order:
-#                print('entered for loop')
-                if self.players[position].own_bid < self.highest_bid\
-                and self.players[position].active == 1:
+            for position, player in enumerate(self.order):
+                print('entered for loop')
+                if self.players[player].own_bid <= self.highest_bid\
+                and self.players[player].active == 1:
                     print(f'The highest bid is {self.highest_bid}')
-                    self.players[position].do(self.highest_bid, self.limit)
-                    if self.players[position].own_bid > self.highest_bid:
-                        self.highest_bid = self.players[position].own_bid
+                    #self.write_data(player, position)
+                    self.players[player].do(self.highest_bid, self.limit)
+                    self.collect_data(player, position)
+                    if self.players[player].own_bid > self.highest_bid:
+                        self.highest_bid = self.players[player].own_bid
                     # need to include some way to stop the game here
                     if self.check_end_of_game() == 0:
-                        pass
+                        return 0
                     #print(f'player {position+1} plays {self.players[position].own_bid}')
             check_activity_round = self.check_activity_round()
 #            print(check_activity_round)
 #            print(not check_activity_round)
 
+
+    def collect_data(self, player, position):
+        '''
+        The function collect data collects the data that is to be used as input
+        for the deep reinforcement learning.
+        '''
+        # Set up a dataframe that stores the following information:
+        # create dicitonary for appending the data frame:
+        d = {}
+        # agent_id of agent that is making the observation
+        d['player'] = player
+        d['position'] = position
+        d['round'] = self.round
+        d['action'] = self.players[player].last_actions[-1]
+        d['bid'] = self.players[player].own_bid
+        d['hand'] = [(self.players[player].hand[0].face, self.players[player].hand[0].suit),\
+        (self.players[player].hand[1].face, self.players[player].hand[1].suit)]
+        d['community'] = [self.flop[i] for i in range(len(self.flop))]
+        count = 0
+        for p in self.order:
+            if p != player:
+                d[f'bid_{count}'] = self.players[p].own_bid
+                d[f'active_{count}'] = self.players[p].active
+                #d[f'action_{count}'] = self.players[p].last_actions
+                count += 1
+
+        print(f'The row {d} will be added to the output frame')
+        self.output = self.output.append(d, ignore_index=True)
+        # agent_position
+        # round
+        # for each of the agents store their current bet
+        # for each of the agents store whether they are active
+        # for each of the agents store their past actions
+        # store the own hand
+        # store the community cards
+        # store the complete list of playable cards
+        # at the end of each game write the payoff into each row of the agent
+
+
+
+
+
+    def write_data(self, player, position):
+        '''
+        The function write_data writes the collected data into the postgres
+        database "poker"
+        '''
+        round = self.round
+        order = self.order
+        act11 = 6
+        act12 = 6
+        act21 = 6
+        act22 = 6
+        act31 = 6
+        act32 = 6
+        act41 = 6
+        act42 = 6
+        act51 = 6
+        act52 = 6
+        if round == 1:
+            face1 = self.players[player].hand[0].face
+            suit1 = self.players[player].hand[0].suit
+            face2 = self.players[player].hand[1].face
+            suit2 = self.players[player].hand[1].suit
+            face3 = 'na'
+            suit3 = 'na'
+            face4 = 'na'
+            suit4 = 'na'
+            face5 = 'na'
+            suit5 = 'na'
+            face6 = 'na'
+            suit6 = 'na'
+            face7 = 'na'
+            suit7 = 'na'
+        elif round == 2:
+            face1 = self.players[player].hand[0].face
+            suit1 = self.players[player].hand[0].suit
+            face2 = self.players[player].hand[1].face
+            suit2 = self.players[player].hand[1].suit
+            face3 = self.players[player].hand[2].face
+            suit3 = self.players[player].hand[2].suit
+            face4 = self.players[player].hand[3].face
+            suit4 = self.players[player].hand[3].suit
+            face5 = self.players[player].hand[4].face
+            suit5 = self.players[player].hand[4].suit
+            face6 = 'na'
+            suit6 = 'na'
+            face7 = 'na'
+            suit7 = 'na'
+        elif round == 3:
+            face1 = self.players[player].hand[0].face
+            suit1 = self.players[player].hand[0].suit
+            face2 = self.players[player].hand[1].face
+            suit2 = self.players[player].hand[1].suit
+            face3 = self.players[player].hand[2].face
+            suit3 = self.players[player].hand[2].suit
+            face4 = self.players[player].hand[3].face
+            suit4 = self.players[player].hand[3].suit
+            face5 = self.players[player].hand[4].face
+            suit5 = self.players[player].hand[4].suit
+            face6 = self.players[player].hand[5].face
+            suit6 = self.players[player].hand[5].suit
+            face7 = 'na'
+            suit7 = 'na'
+        # if round == 4:
+        #     face1 = player.hand[0][0]
+        #     suit1 = player.hand[0][1]
+        #     face2 = player.hand[1][0]
+        #     suit2 = player.hand[1][1]
+        #     face3 = player.hand[2][0]
+        #     suit3 = player.hand[2][1]
+        #     face4 = player.hand[3][0]
+        #     suit4 = player.hand[3][1]
+        #     face5 = player.hand[4][0]
+        #     suit5 = player.hand[4][1]
+        #     face6 = player.hand[5][0]
+        #     suit6 = player.hand[5][1]
+        #     face7 = player.hand[6][0]
+        #     suit7 = player.hand[6][1]
+
+            # face3 = None
+            # suit3 = None
+            # face4 = None
+            # suit4 = None
+            # face5 = None
+            # suit5 = None
+            # face6 = None
+            # suit6 = None
+            # face7 = None
+            # suit7 = None
+
+        for p in order:
+            count = 0
+            if p != player and len(self.players[p].last_actions) >= 2:
+                count += 1
+                if count == 1:
+                    act11 = self.players[p].last_actions[-1]
+                    act12 = self.players[p].last_actions[-2]
+                elif count == 2:
+                    act21 = self.players[p].last_actions[-1]
+                    act22 = self.players[p].last_actions[-2]
+                elif count == 3:
+                    act31 = self.players[p].last_actions[-1]
+                    act32 = self.players[p].last_actions[-2]
+                elif count == 4:
+                    act41 = self.players[p].last_actions[-1]
+                    act42 = self.players[p].last_actions[-2]
+                elif count == 5:
+                    act51 = self.players[p].last_actions[-1]
+                    act52 = self.players[p].last_actions[-2]
+
+            elif p != player and len(self.players[p].last_actions) < 2:
+                count += 1
+                if len(self.players[p].last_actions) != 0:
+                    if count == 1:
+                        act11 = self.players[p].last_actions[0]
+                    elif count == 2:
+                        act21 = self.players[p].last_actions[0]
+                    elif count == 3:
+                        act31 = self.players[p].last_actions[0]
+                    elif count == 4:
+                        act41 = self.players[p].last_actions[0]
+                    elif count == 5:
+                        act51 = self.players[p].last_actions[0]
+
+
+        # engine.execute("""INSERT INTO results (round, pos, act11, act12, face1, suit1,
+        # face2, suit2) VALUES {};""".format((round, position, act11, act12, face1, suit1, face2, suit2,)))
+
+        engine.execute("""INSERT INTO results (round, pos, act11, act12,
+        act21, act22, act31, act32, act41, act42, act51, act52, face1, suit1,
+        face2, suit2, face3, suit3, face4, suit4, face5, suit5, face6, suit6,
+        face7, suit7)
+        VALUES {};""".format((round, position, act11, act12, act21, act22, act31,\
+        act32, act41, act42, act51, act52, face1, suit1, face2, suit2, face3, suit3,\
+        face4, suit4, face5, suit5, face6, suit6, face7, suit7)))
+
+        print('Wrote the data into the database!')
 
 
     def action_first_round(self):
@@ -591,26 +780,28 @@ class Game:
         #print(f'The highest bid after the big blind is {self.highest_bid}')
 
         # let the non-blind players take their turn
-        for position in self.order[2:]:
-            self.players[position].do(self.highest_bid, self.limit)
+        for position, player in enumerate(self.order[2:]):
+            # for jedem do muss die Information ausgelesen werden
+            #self.write_data(player, position)
+            self.players[player].do(self.highest_bid, self.limit)
+            self.collect_data(player, position)
             #print(f'player {position+1} bet {self.players[position].own_bid}')
-            if self.players[position].own_bid > self.highest_bid:
-                self.highest_bid = self.players[position].own_bid
+            if self.players[player].own_bid > self.highest_bid:
+                self.highest_bid = self.players[player].own_bid
 
-        # eliminate players that folded
         self.active_players = self.eliminate_players()
 
         # check if the round is still active
         check_activity_round = self.check_activity_round()
         if check_activity_round:
-            return print(f'round {self.round} is over and {self.active_players}\
-            players are still in the game!')
+            return print(f'''round {self.round} is over and {self.active_players}
+            players are still in the game!''')
 
         # play iterative_play
         self.iterative_play()
 
-        return print(f'round {self.round} is over and {self.active_players} players\
-        are still in the game')
+        return print(f'''round {self.round} is over and {self.active_players} players
+        are still in the game''')
 
 
     def deal_flop(self):
@@ -631,7 +822,6 @@ class Game:
         The function action_second_round calls the players to execute their
         action after observing the flop
         '''
-
         self.iterative_play()
 
         return print(f'The second round is over and {self.active_players} \
@@ -665,10 +855,6 @@ class Game:
         self.flop.append(self.deck.pop())
         [player.hand.append(Card(self.flop[-1])) for player in self.players]
         print(f'The cards after the river are: {self.flop}')
-
-
-    def write_data(self):
-        pass
 
 
     def pass_to_next_game(self):
@@ -711,11 +897,12 @@ class Game:
         self.game_count += 1
 
         # reset rounds
-        self.round = 0
+        self.round = 1
 
-        # reset all players to be active
+        # reset all players to be active and delete their last actions
         for player in self.players:
             player.active = 1
+            player.last_actions = []
 
         # increase the small blind position
         # this is currently incorrect because we have to go in a circle
@@ -755,7 +942,6 @@ class Game:
                 self.action_third_round()
                 if self.active_players>1:
                     self.deal_river()
-        self.write_data()
         self.pass_to_next_game()
 
     def __repr__(self):
@@ -763,4 +949,4 @@ class Game:
         The position of the small blind is {}. \
         The total money in the pot will yet have to be created.\
         \n The players who are still in the game will have to be created.
-        '''.format(self.round+1, self.game_count, self.highest_bid, self.position_small+1)
+        '''.format(self.round, self.game_count, self.highest_bid, self.position_small+1)
