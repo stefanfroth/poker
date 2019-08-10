@@ -293,8 +293,9 @@ class Player():
     def check(self):
         '''
         The player checks.
+        Quasi deprecated because the machine does not care about calling or checking.
         '''
-        self.last_actions.append(3)
+        self.last_actions.append(999)
         print(f'Player {self.name}: I am curious what is going to happen.\
             I am checking!')
 
@@ -303,7 +304,7 @@ class Player():
         '''
         The player calls.
         '''
-        self.last_actions.append(4)
+        self.last_actions.append(1)
         self.own_bid = highest_bid
         print(f'Player {self.name}: I think I can win this game. I am calling!')
 
@@ -312,7 +313,7 @@ class Player():
         '''
         The player raises the highest_bid.
         '''
-        self.last_actions.append(5)
+        self.last_actions.append(2)
         self.own_bid = highest_bid + limit
 
 
@@ -323,7 +324,7 @@ class Player():
         '''
         if blind == 'small': # was, wenn er nicht mehr genug Geld für den small blind hat?
             self.own_bid = self.blind
-            self.last_actions.append(1)
+            self.last_actions.append(2)
             print(f'Player {self.name}: I have bet the small blind of ${self.blind}!')
         elif blind == 'big': # was, wenn er nicht mehr genug Geld für den big blind hat?
             self.own_bid = self.blind * 2
@@ -333,7 +334,7 @@ class Player():
             if self.own_bid < highest_bid:
                 action = random.choice(['fold', 'call', 'raise'])
             else:
-                action = random.choice(['check', 'raise'])
+                action = random.choice(['call', 'raise'])
             #print(f'Player {self.name} chose action {action}.')
             if action == 'fold':
                 self.fold()
@@ -432,7 +433,7 @@ class Game:
         '''
         # die nächsten zwei Zeilen kann man auch auslagern
         self.deck = list(itertools.product(self.faces.split(), self.suit))
-        self.d = {self.deck[i]: i for i in range(len(self.deck))}
+        self.d = {self.deck[i]: i+1 for i in range(len(self.deck))}
         np.random.shuffle(self.deck)
 
 
@@ -613,23 +614,23 @@ class Game:
         d['hand1'] = self.d[(self.players[player].hand[0].face, self.players[player].hand[0].suit)]
         d['hand2'] = self.d[(self.players[player].hand[1].face, self.players[player].hand[1].suit)]
         if self.round == 1:
-            d['community1'] = 999
-            d['community2'] = 999
-            d['community3'] = 999
-            d['community4'] = 999
-            d['community5'] = 999
+            d['community1'] = 0
+            d['community2'] = 0
+            d['community3'] = 0
+            d['community4'] = 0
+            d['community5'] = 0
         elif self.round == 2:
             d['community1'] = self.d[self.flop[0]]
             d['community2'] = self.d[self.flop[1]]
             d['community3'] = self.d[self.flop[2]]
-            d['community4'] = 999
-            d['community5'] = 999
+            d['community4'] = 0
+            d['community5'] = 0
         elif self.round == 3:
             d['community1'] = self.d[self.flop[0]]
             d['community2'] = self.d[self.flop[1]]
             d['community3'] = self.d[self.flop[2]]
             d['community4'] = self.d[self.flop[3]]
-            d['community5'] = 999
+            d['community5'] = 0
         else:
             d['community1'] = self.d[self.flop[0]]
             d['community2'] = self.d[self.flop[1]]
