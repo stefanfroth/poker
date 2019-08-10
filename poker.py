@@ -5,17 +5,17 @@ a game of poker.
 
 
 # import the necessary packages
-import numpy as np
 import itertools
-from collections import namedtuple
 import random
+import numpy as np
+#from collections import namedtuple
 import sqlalchemy as sqa
 import pandas as pd
 
 
 # establish a connection to the database
-db = f'postgres://localhost/{"poker"}'
-engine = sqa.create_engine(db)
+DB = f'postgres://localhost/{"poker"}'
+ENGINE = sqa.create_engine(DB)
 
 
 class Card:
@@ -37,11 +37,12 @@ class Evaluator:
 
     def __init__(self, hand):
         self.hand = hand
-        self.faces = '2 3 4 5 6 7 8 9 10 j q k a'
-        self.lowaces = 'a 2 3 4 5 6 7 8 9 10 j q k'
+        self.faces = '2 3 4 5 6 7 8 9 t j q k a'
+        self.lowaces = 'a 2 3 4 5 6 7 8 9 t j q k'
         self.face = self.faces.split()
         self.lowace = self.lowaces.split()
-        self.suit = '♥ ♦ ♣ ♠'.split()
+        #self.suit = '♥ ♦ ♣ ♠'.split()
+        self.suit = ['h', 'd', 'c', 's']
 
 
     def straightflush(self, hand):
@@ -53,8 +54,8 @@ class Evaluator:
                  else (self.face, self.faces))
         ordered = sorted(hand, key=lambda card: (f.index(card.face), card.suit))
         first, rest = ordered[0], ordered[1:]
-        if ( all(card.suit == first.suit for card in rest) and
-             ' '.join(card.face for card in ordered) in fs ):
+        if (all(card.suit == first.suit for card in rest) and
+             ' '.join(card.face for card in ordered) in fs):
             return 'straight-flush', ordered[-1].face
         return False
 
@@ -72,8 +73,8 @@ class Evaluator:
             if allfaces.count(f) == 4:
                 allftypes.remove(f)
                 return 'four-of-a-kind', [f, allftypes.pop()]
-        else:
-            return False
+            else:
+                return False
 
 
     def fullhouse(self, hand):
@@ -89,8 +90,8 @@ class Evaluator:
             if allfaces.count(f) == 3:
                 allftypes.remove(f)
                 return 'full-house', [f, allftypes.pop()]
-        else:
-            return False
+            else:
+                return False
 
 
     def flush(self, hand):
@@ -104,7 +105,8 @@ class Evaluator:
             return 'flush', sorted(allfaces,
                                    key=lambda f: self.face.index(f),
                                    reverse=True)
-        return False
+        else:
+            return False
 
 
     def straight(self, hand):
@@ -134,9 +136,9 @@ class Evaluator:
             if allfaces.count(f) == 3:
                 allftypes.remove(f)
                 return ('three-of-a-kind', [f] +
-                     sorted(allftypes,
-                            key=lambda f: self.face.index(f),
-                            reverse=True))
+                    sorted(allftypes,
+                    key=lambda f: self.face.index(f),
+                    reverse=True))
         else:
             return False
 
@@ -261,6 +263,8 @@ class Player():
     def __init__(self, stack, blind, name):
         self.hand = []
         self.stack = stack
+        self.stack_old = stack
+        self.reward = 0
         self.blind = blind
         self.name = name
         self.own_bid = 0
@@ -270,7 +274,7 @@ class Player():
         self.handrankorder = {'straightflush': 1, 'four-of-a-kind': 2, 'full-house': 3,
                               'flush': 4, 'straight': 5, 'three-of-a-kind': 6,
                               'two-pair': 7, 'one-pair': 8, 'high-card': 9}
-        self.cardrankorder = {'a': 1, 'k': 2, 'q': 3, 'j': 4, '10': 5, '9': 6,
+        self.cardrankorder = {'a': 1, 'k': 2, 'q': 3, 'j': 4, 't': 5, '9': 6,
                               '8': 7, '7': 8, '6': 9, '5': 10,
                               '4': 11, '3': 12, '2': 13}
         self.actions = {'fold': 0, 'small blind': 1, 'big blind': 2,
@@ -339,7 +343,8 @@ class Player():
                 self.call(highest_bid)
             else:
                 self.raise_bet(highest_bid, limit)
-            print(f'Player {self.name}: I have {self.last_actions[-1]} and am betting ${self.own_bid}!')
+            print(f'''Player {self.name}: I have {self.last_actions[-1]}
+            and am betting ${self.own_bid}!''')
 
 
     def evaluate_hand(self):
@@ -357,9 +362,8 @@ class Player():
             evaluator = Evaluator(hand)
             rank, highest_card = evaluator.find_best_hand()
             hand_values_rank.append((i, rank, self.handrankorder[rank]\
-                                     , [self.cardrankorder[highest_card[i]] for i in range(len(highest_card))]\
-                                     , highest_card\
-                                     , self.name))
+                , [self.cardrankorder[highest_card[i]] for i in range(len(highest_card))]\
+                , highest_card, self.name))
 
         ranked = sorted(hand_values_rank, key=lambda x: (x[2], x[3]), reverse=False)
         print([(card.face, card.suit) for card in possible_hands[ranked[0][0]]])
@@ -405,10 +409,12 @@ class Game:
         self.flop = []
         self.pot = 0
         self.winner = 0
-        self.suit = '♥ ♦ ♣ ♠'.split()
+        #self.suit = '♥ ♦ ♣ ♠'.split()
+        self.suit = ['h', 'd', 'c', 's']
         # ordered strings of faces
-        self.faces = '2 3 4 5 6 7 8 9 10 j q k a'
+        self.faces = '2 3 4 5 6 7 8 9 t j q k a'
         self.deck = []
+        self.d = {}
         # faces as lists
         self.face = self.faces.split()
 
@@ -424,7 +430,9 @@ class Game:
         The function create_deck takes the faces and suits of the Game as input,
         combines and shuffles them.
         '''
+        # die nächsten zwei Zeilen kann man auch auslagern
         self.deck = list(itertools.product(self.faces.split(), self.suit))
+        self.d = {self.deck[i]: i for i in range(len(self.deck))}
         np.random.shuffle(self.deck)
 
 
@@ -445,7 +453,7 @@ class Game:
 
             #print(f'The order is {order}')
             add = list(range(self.nr_of_players))
-            print(order)
+            #print(order)
             #print(add)
             [add.remove(x) for x in order]
             #print(add)
@@ -462,7 +470,7 @@ class Game:
             #print(order)
 
             self.order = order
-        print(f'The order is {self.order}')
+        #print(f'The order is {self.order}')
 
 
     def check_activity_round(self):
@@ -479,7 +487,6 @@ class Game:
                 self.active_players -= 1
             #print(f'highest is {highest} and active players are {self.active_players}')
 
-#        print(f'{highest} players are betting the highest bid and {self.active_players} players are active')
         if highest == self.active_players and self.active_players >= 1:
 
             # increase the round by one
@@ -505,7 +512,7 @@ class Game:
         if active == 1:
             print('The game has ended')
             self.winner = ap
-            self.active_players = self.eliminate_players()
+            self.active_players = 1
             return 0
         if active == 0:
             print('Something went wrong')
@@ -523,7 +530,7 @@ class Game:
         eliminated_players = 0
         for player in self.players:
             if player.active == 0:
-                eliminated_players +=1
+                eliminated_players += 1
 
         active_players = self.active_players - eliminated_players
 
@@ -567,10 +574,10 @@ class Game:
 
         # run until the round is exhaustively played
         while not check_activity_round:
-            print('entered while loop')
+            #print('entered while loop')
 #            print(f'We have to go on playing with {self.active_players}')
             for position, player in enumerate(self.order):
-                print('entered for loop')
+                #print('entered for loop')
                 if self.players[player].own_bid <= self.highest_bid\
                 and self.players[player].active == 1:
                     print(f'The highest bid is {self.highest_bid}')
@@ -600,11 +607,36 @@ class Game:
         d['player'] = player
         d['position'] = position
         d['round'] = self.round
+        d['game'] = self.game_count
         d['action'] = self.players[player].last_actions[-1]
         d['bid'] = self.players[player].own_bid
-        d['hand'] = [(self.players[player].hand[0].face, self.players[player].hand[0].suit),\
-        (self.players[player].hand[1].face, self.players[player].hand[1].suit)]
-        d['community'] = [self.flop[i] for i in range(len(self.flop))]
+        d['hand1'] = self.d[(self.players[player].hand[0].face, self.players[player].hand[0].suit)]
+        d['hand2'] = self.d[(self.players[player].hand[1].face, self.players[player].hand[1].suit)]
+        if self.round == 1:
+            d['community1'] = 999
+            d['community2'] = 999
+            d['community3'] = 999
+            d['community4'] = 999
+            d['community5'] = 999
+        elif self.round == 2:
+            d['community1'] = self.d[self.flop[0]]
+            d['community2'] = self.d[self.flop[1]]
+            d['community3'] = self.d[self.flop[2]]
+            d['community4'] = 999
+            d['community5'] = 999
+        elif self.round == 3:
+            d['community1'] = self.d[self.flop[0]]
+            d['community2'] = self.d[self.flop[1]]
+            d['community3'] = self.d[self.flop[2]]
+            d['community4'] = self.d[self.flop[3]]
+            d['community5'] = 999
+        else:
+            d['community1'] = self.d[self.flop[0]]
+            d['community2'] = self.d[self.flop[1]]
+            d['community3'] = self.d[self.flop[2]]
+            d['community4'] = self.d[self.flop[3]]
+            d['community5'] = self.d[self.flop[4]]
+        #[self.flop[i] for i in range(len(self.flop))]
         count = 0
         for p in self.order:
             if p != player:
@@ -613,7 +645,7 @@ class Game:
                 #d[f'action_{count}'] = self.players[p].last_actions
                 count += 1
 
-        print(f'The row {d} will be added to the output frame')
+        #print(f'The row {d} will be added to the output frame')
         self.output = self.output.append(d, ignore_index=True)
         # agent_position
         # round
@@ -626,145 +658,28 @@ class Game:
         # at the end of each game write the payoff into each row of the agent
 
 
+    def add_reward(self):
+        '''
+        The function add_reward adds the reward of each player to the output
+        data frame that is written to the database.
+        '''
+        self.output['reward'] = self.output['player']
+        for i in range(self.output.shape[0]):
+            self.output.at[i, 'reward'] =\
+            self.players[int(self.output.at[i, 'reward'])].reward
 
 
-
-    def write_data(self, player, position):
+    def write_data(self):
         '''
         The function write_data writes the collected data into the postgres
         database "poker"
         '''
-        round = self.round
-        order = self.order
-        act11 = 6
-        act12 = 6
-        act21 = 6
-        act22 = 6
-        act31 = 6
-        act32 = 6
-        act41 = 6
-        act42 = 6
-        act51 = 6
-        act52 = 6
-        if round == 1:
-            face1 = self.players[player].hand[0].face
-            suit1 = self.players[player].hand[0].suit
-            face2 = self.players[player].hand[1].face
-            suit2 = self.players[player].hand[1].suit
-            face3 = 'na'
-            suit3 = 'na'
-            face4 = 'na'
-            suit4 = 'na'
-            face5 = 'na'
-            suit5 = 'na'
-            face6 = 'na'
-            suit6 = 'na'
-            face7 = 'na'
-            suit7 = 'na'
-        elif round == 2:
-            face1 = self.players[player].hand[0].face
-            suit1 = self.players[player].hand[0].suit
-            face2 = self.players[player].hand[1].face
-            suit2 = self.players[player].hand[1].suit
-            face3 = self.players[player].hand[2].face
-            suit3 = self.players[player].hand[2].suit
-            face4 = self.players[player].hand[3].face
-            suit4 = self.players[player].hand[3].suit
-            face5 = self.players[player].hand[4].face
-            suit5 = self.players[player].hand[4].suit
-            face6 = 'na'
-            suit6 = 'na'
-            face7 = 'na'
-            suit7 = 'na'
-        elif round == 3:
-            face1 = self.players[player].hand[0].face
-            suit1 = self.players[player].hand[0].suit
-            face2 = self.players[player].hand[1].face
-            suit2 = self.players[player].hand[1].suit
-            face3 = self.players[player].hand[2].face
-            suit3 = self.players[player].hand[2].suit
-            face4 = self.players[player].hand[3].face
-            suit4 = self.players[player].hand[3].suit
-            face5 = self.players[player].hand[4].face
-            suit5 = self.players[player].hand[4].suit
-            face6 = self.players[player].hand[5].face
-            suit6 = self.players[player].hand[5].suit
-            face7 = 'na'
-            suit7 = 'na'
-        # if round == 4:
-        #     face1 = player.hand[0][0]
-        #     suit1 = player.hand[0][1]
-        #     face2 = player.hand[1][0]
-        #     suit2 = player.hand[1][1]
-        #     face3 = player.hand[2][0]
-        #     suit3 = player.hand[2][1]
-        #     face4 = player.hand[3][0]
-        #     suit4 = player.hand[3][1]
-        #     face5 = player.hand[4][0]
-        #     suit5 = player.hand[4][1]
-        #     face6 = player.hand[5][0]
-        #     suit6 = player.hand[5][1]
-        #     face7 = player.hand[6][0]
-        #     suit7 = player.hand[6][1]
+        self.output.to_sql('results', con=ENGINE, if_exists='append')
 
-            # face3 = None
-            # suit3 = None
-            # face4 = None
-            # suit4 = None
-            # face5 = None
-            # suit5 = None
-            # face6 = None
-            # suit6 = None
-            # face7 = None
-            # suit7 = None
+        #print('Wrote the data into the database!')
 
-        for p in order:
-            count = 0
-            if p != player and len(self.players[p].last_actions) >= 2:
-                count += 1
-                if count == 1:
-                    act11 = self.players[p].last_actions[-1]
-                    act12 = self.players[p].last_actions[-2]
-                elif count == 2:
-                    act21 = self.players[p].last_actions[-1]
-                    act22 = self.players[p].last_actions[-2]
-                elif count == 3:
-                    act31 = self.players[p].last_actions[-1]
-                    act32 = self.players[p].last_actions[-2]
-                elif count == 4:
-                    act41 = self.players[p].last_actions[-1]
-                    act42 = self.players[p].last_actions[-2]
-                elif count == 5:
-                    act51 = self.players[p].last_actions[-1]
-                    act52 = self.players[p].last_actions[-2]
-
-            elif p != player and len(self.players[p].last_actions) < 2:
-                count += 1
-                if len(self.players[p].last_actions) != 0:
-                    if count == 1:
-                        act11 = self.players[p].last_actions[0]
-                    elif count == 2:
-                        act21 = self.players[p].last_actions[0]
-                    elif count == 3:
-                        act31 = self.players[p].last_actions[0]
-                    elif count == 4:
-                        act41 = self.players[p].last_actions[0]
-                    elif count == 5:
-                        act51 = self.players[p].last_actions[0]
-
-
-        # engine.execute("""INSERT INTO results (round, pos, act11, act12, face1, suit1,
-        # face2, suit2) VALUES {};""".format((round, position, act11, act12, face1, suit1, face2, suit2,)))
-
-        engine.execute("""INSERT INTO results (round, pos, act11, act12,
-        act21, act22, act31, act32, act41, act42, act51, act52, face1, suit1,
-        face2, suit2, face3, suit3, face4, suit4, face5, suit5, face6, suit6,
-        face7, suit7)
-        VALUES {};""".format((round, position, act11, act12, act21, act22, act31,\
-        act32, act41, act42, act51, act52, face1, suit1, face2, suit2, face3, suit3,\
-        face4, suit4, face5, suit5, face6, suit6, face7, suit7)))
-
-        print('Wrote the data into the database!')
+        # reset the output_frame
+        self.output = pd.DataFrame()
 
 
     def action_first_round(self):
@@ -784,7 +699,7 @@ class Game:
             # for jedem do muss die Information ausgelesen werden
             #self.write_data(player, position)
             self.players[player].do(self.highest_bid, self.limit)
-            self.collect_data(player, position)
+            self.collect_data(player, position+2)
             #print(f'player {position+1} bet {self.players[position].own_bid}')
             if self.players[player].own_bid > self.highest_bid:
                 self.highest_bid = self.players[player].own_bid
@@ -817,14 +732,14 @@ class Game:
                 .format(player.name, [(card.face, card.suit) for card in player.hand]))
 
 
-    def action_second_round(self):
+    def action_post_flop(self):
         '''
-        The function action_second_round calls the players to execute their
-        action after observing the flop
+        The function action_post_flop calls the players to execute their
+        action after observing the additional community card(s)
         '''
         self.iterative_play()
 
-        return print(f'The second round is over and {self.active_players} \
+        return print(f'Round {self.round} is over and {self.active_players} \
         players are still in the game')
 
 
@@ -835,17 +750,6 @@ class Game:
         self.flop.append(self.deck.pop())
         [player.hand.append(Card(self.flop[-1])) for player in self.players]
         print(f'The cards after the turn are: {self.flop}')
-
-
-    def action_third_round(self):
-        '''
-        The function action_second_round calls the players to execute their
-        action after observing the fourth card.
-        '''
-        self.iterative_play()
-
-        print(f'The third round is over and {self.active_players} \
-        players are still in the game')
 
 
     def deal_river(self):
@@ -864,12 +768,13 @@ class Game:
         '''
 
         # determine who won the game
-        if self.active_players>1:
+        if self.active_players > 1:
             best_hands = []
             for player in self.players:
                 if player.active == 1:
                     best_hands.append(player.evaluate_hand())
-            winning_hand = sorted(best_hands, key=lambda x: (x[2], x[3]), reverse=False)[0]
+            winning_hand = sorted(best_hands, key=lambda x: (x[2], x[3]),\
+                reverse=False)[0]
             print(f'Player {winning_hand[5]} wins with a {winning_hand[1]}. \
             His hand is {winning_hand[4]}')
             self.winner = winning_hand[5]
@@ -882,13 +787,16 @@ class Game:
 
         # distribute the pot
         self.pot = self.determine_pot_size()
-        print(f'The winner is {self.winner}')
+        #print(f'The winner is {self.winner}')
         self.players[self.winner-1].stack += self.pot
 
         for player in self.players:
             player.stack -= player.own_bid
             print(f"Player {player.name}'s stack after game {self.game_count} \
             is {player.stack}.")
+            player.reward = player.stack - player.stack_old
+            # update old stack for the next round
+            player.stack_old = player.stack
 
         # set pot to zero again
         self.pot = 0
@@ -934,15 +842,18 @@ class Game:
         self.create_deck()
         self.deal_cards()
         self.action_first_round()
-        if self.active_players>1:
+        if self.active_players > 1:
             self.deal_flop()
-            self.action_second_round()
-            if self.active_players>1:
+            self.action_post_flop()
+            if self.active_players > 1:
                 self.deal_turn()
-                self.action_third_round()
-                if self.active_players>1:
+                self.action_post_flop()
+                if self.active_players > 1:
                     self.deal_river()
+                    self.action_post_flop()
         self.pass_to_next_game()
+        self.add_reward()
+        self.write_data()
 
     def __repr__(self):
         return '''The game is in round {} and in game {}. The highest bid is {}.\
