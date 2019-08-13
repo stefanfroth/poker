@@ -8,9 +8,17 @@ a game of poker.
 import itertools
 import random
 import numpy as np
-#from collections import namedtuple
 import sqlalchemy as sqa
 import pandas as pd
+from tensorflow.keras import models, layers, metrics, optimizers
+from tensorflow.keras.models import model_from_json, Sequential
+from tensorflow.keras.layers import Input, Dense, Activation, Conv2D, MaxPooling2D, Flatten, Dropout
+from tensorflow.keras import backend as K
+from tensorflow import logging
+from agent import Agent
+
+# silence future warnings from tensorflow
+logging.set_verbosity(logging.ERROR)
 
 
 # establish a connection to the database
@@ -260,14 +268,15 @@ class Player():
     she is dealt two cards. She decides on her actions given her cards.
     '''
 
-    def __init__(self, stack, blind, name):
+    def __init__(self, stack, blind, name, agent):
         self.hand = []
+        self.stack_original = stack
         self.stack = stack
         self.stack_old = stack
         self.reward = 0
         self.blind = blind
         self.name = name
-        self.own_bid = 0
+        self.own_bet = 0
         self.active = 1
         self.last_actions = []
         self.best_hand = []
@@ -277,8 +286,61 @@ class Player():
         self.cardrankorder = {'a': 1, 'k': 2, 'q': 3, 'j': 4, 't': 5, '9': 6,
                               '8': 7, '7': 8, '6': 9, '5': 10,
                               '4': 11, '3': 12, '2': 13}
-        self.actions = {'fold': 0, 'small blind': 1, 'big blind': 2,
-                        'check': 3, 'call': 4, 'raise': 5}
+        self.actions = {0: 'fold', 1: 'call', 2: 'raise'}
+        self.max_features = 53
+        self.vector_size = 4
+        self.max_len = 7
+        self.input_card_embedding = np.zeros((1,7))
+        self.input_state = np.zeros((1,13))
+        self.agent = agent
+
+#        self.build_model()
+
+
+    def create_embedding_input(self, input):
+        '''
+        The function create_embedding_input creates the input for the embedding of the card vectors
+        '''
+        # I will have to refactor the code here because this code will create matrices for the action functions but I only want an array
+        # However, for the model improvement I will want to have all of them
+        if input.shape[0] > 1:
+            cards = np.array(input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']].loc[0])
+            for i in range(1, input.shape[0]):
+                cards = np.vstack((cards, np.array(input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']].loc[i])))
+        else:
+            cards = np.array(input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']])
+
+        self.input_card_embedding = np.squeeze(cards)
+
+
+    def create_state_input(self, input):
+        '''
+        The function create_state_input creates the input for the neural network apart from the card embeddings
+        '''
+        if input.shape[0] > 1:
+            state = np.array(input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
+            'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']].loc[0])
+            for i in range(1, input.shape[0]):
+                state = np.vstack((rest, np.array(input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
+                'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']].loc[i])))
+        else:
+            state = np.array(input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
+            'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']])
+
+
+        self.input_state = np.squeeze(state)
+
+
+    def chose_action(self, state):
+        self.action = np.random.choice(np.squeeze(self.agent.model.predict(state)))
+        return self.action
+
+
+    def train_model(self):
+        '''
+        The method train_model trains the model after a set amount of games of
+        poker in order to refine the tactic of the poker playing agent.
+        '''
 
 
     def fold(self):
@@ -300,52 +362,56 @@ class Player():
             I am checking!')
 
 
-    def call(self, highest_bid):
+    def call(self, highest_bet):
         '''
         The player calls.
         '''
         self.last_actions.append(1)
-        self.own_bid = highest_bid
+        self.own_bet = highest_bet
         print(f'Player {self.name}: I think I can win this game. I am calling!')
 
 
-    def raise_bet(self, highest_bid, limit):
+    def raise_bet(self, highest_bet, limit):
         '''
-        The player raises the highest_bid.
+        The player raises the highest_bet.
         '''
         self.last_actions.append(2)
-        self.own_bid = highest_bid + limit
+        self.own_bet = highest_bet + limit
 
 
-    def do(self, highest_bid, limit, blind=None):
+    def do(self, highest_bet, limit, state, blind=None):
         '''
         The function do determines the action of the player when it is his turn
         to bet.
         '''
+        #print(f'My own bet is {self.own_bet} and the original stack size is {self.stack_original}')
         if blind == 'small': # was, wenn er nicht mehr genug Geld für den small blind hat?
-            self.own_bid = self.blind
+            self.own_bet = self.blind
             self.last_actions.append(2)
             print(f'Player {self.name}: I have bet the small blind of ${self.blind}!')
         elif blind == 'big': # was, wenn er nicht mehr genug Geld für den big blind hat?
-            self.own_bid = self.blind * 2
+            self.own_bet = self.blind * 2
             self.last_actions.append(2)
             print(f'Player {self.name}: I have bet the big blind of ${self.blind*2}!')
+        elif highest_bet == self.stack_original:
+            self.call(highest_bet)
         else:
-            if self.own_bid < highest_bid:
-                action = random.choice(['fold', 'call', 'raise'])
-            else:
-                action = random.choice(['call', 'raise'])
+            #if self.own_bet < highest_bet:
+            action = self.chose_action(state)
+            # check that it does not fold if player.own_bet == highest_bet
+            #else:
+            #    action = random.choice(['call', 'raise'])
             #print(f'Player {self.name} chose action {action}.')
-            if action == 'fold':
+            if action == 0:
                 self.fold()
-            elif action == 'check':
-                self.check()
-            elif action == 'call':
-                self.call(highest_bid)
+            #elif action == 'check':
+            #    self.check()
+            elif action == 1:
+                self.call(highest_bet)
             else:
-                self.raise_bet(highest_bid, limit)
-            print(f'''Player {self.name}: I have {self.last_actions[-1]}
-            and am betting ${self.own_bid}!''')
+                self.raise_bet(highest_bet, limit)
+            print(f'''Player {self.name}: I have {self.actions[self.last_actions[-1]]}ed
+            and am betting ${self.own_bet}!''')
 
 
     def evaluate_hand(self):
@@ -394,7 +460,7 @@ class Game:
     and the game thus unfolds.
     '''
 
-    def __init__(self, nr_of_players, blind, stack, limit=200):
+    def __init__(self, nr_of_players, blind, stack, agent, limit=200):
         self.nr_of_players = nr_of_players
         self.limit = limit
         self.blind = blind
@@ -403,7 +469,7 @@ class Game:
         self.player_names = list(range(nr_of_players))
         self.order = list(range(nr_of_players))
         self.position_small = 0
-        self.highest_bid = 0
+        self.highest_bet = 0
         self.round = 1
         self.game_count = 1
         self.active_players = nr_of_players
@@ -418,9 +484,10 @@ class Game:
         self.d = {}
         # faces as lists
         self.face = self.faces.split()
+        self.agent = agent
 
         for p in range(self.nr_of_players):
-            player = Player(self.stack, self.blind, p+1)
+            player = Player(self.stack, self.blind, p+1, self.agent)
             self.players.append(player)
 
         self.output = pd.DataFrame()
@@ -439,7 +506,7 @@ class Game:
 
     def determine_order(self):
         '''
-        The function determine_order() determines the order of bidding in each game
+        The function determine_order() determines the order of betding in each game
         '''
         if self.game_count != 1:
             order = []
@@ -482,7 +549,7 @@ class Game:
         highest = 0
         self.active_players = self.nr_of_players
         for position in self.order:
-            if self.players[position].own_bid == self.highest_bid:
+            if self.players[position].own_bet == self.highest_bet:
                 highest += 1
             if self.players[position].active == 0:
                 self.active_players -= 1
@@ -545,7 +612,7 @@ class Game:
         '''
         pot = 0
         for p in self.players:
-            pot += p.own_bid
+            pot += p.own_bet
 
         return pot
 
@@ -579,18 +646,25 @@ class Game:
 #            print(f'We have to go on playing with {self.active_players}')
             for position, player in enumerate(self.order):
                 #print('entered for loop')
-                if self.players[player].own_bid <= self.highest_bid\
+                if self.players[player].own_bet <= self.highest_bet\
                 and self.players[player].active == 1:
-                    print(f'The highest bid is {self.highest_bid}')
-                    #self.write_data(player, position)
-                    self.players[player].do(self.highest_bid, self.limit)
-                    self.collect_data(player, position)
-                    if self.players[player].own_bid > self.highest_bid:
-                        self.highest_bid = self.players[player].own_bid
-                    # need to include some way to stop the game here
-                    if self.check_end_of_game() == 0:
-                        return 0
-                    #print(f'player {position+1} plays {self.players[position].own_bid}')
+                    print(f'The highest bet is {self.highest_bet}')
+                    if self.highest_bet == self.stack:
+                        self.players[player].do(self.highest_bet, self.limit, [[self.players[player].input_card_embedding], [self.players[player].input_state]])
+                    else:
+                        #self.write_data(player, position)
+                        self.collect_data(player, position)
+                        self.players[player].create_embedding_input(self.output.loc[[self.output.shape[0]-1]])
+                        self.players[player].create_state_input(self.output.loc[[self.output.shape[0]-1]])
+                        #print(f'''The inputs for the action will be the cards {self.players[player].input_card_embedding} and the rest of the state {self.players[player].input_state }''')
+                        self.players[player].do(self.highest_bet, self.limit, [[self.players[player].input_card_embedding], [self.players[player].input_state]])
+                        self.save_action(player)
+                        if self.players[player].own_bet > self.highest_bet:
+                            self.highest_bet = self.players[player].own_bet
+                        # need to include some way to stop the game here
+                        if self.check_end_of_game() == 0:
+                            return 0
+                    #print(f'player {position+1} plays {self.players[position].own_bet}')
             check_activity_round = self.check_activity_round()
 #            print(check_activity_round)
 #            print(not check_activity_round)
@@ -609,8 +683,9 @@ class Game:
         d['position'] = position
         d['round'] = self.round
         d['game'] = self.game_count
-        d['action'] = self.players[player].last_actions[-1]
-        d['bid'] = self.players[player].own_bid
+        d['action'] = ''
+        #d['reward'] = ''
+        d['bet'] = self.players[player].own_bet
         d['hand1'] = self.d[(self.players[player].hand[0].face, self.players[player].hand[0].suit)]
         d['hand2'] = self.d[(self.players[player].hand[1].face, self.players[player].hand[1].suit)]
         if self.round == 1:
@@ -641,7 +716,7 @@ class Game:
         count = 0
         for p in self.order:
             if p != player:
-                d[f'bid_{count}'] = self.players[p].own_bid
+                d[f'bet_{count}'] = self.players[p].own_bet
                 d[f'active_{count}'] = self.players[p].active
                 #d[f'action_{count}'] = self.players[p].last_actions
                 count += 1
@@ -659,11 +734,17 @@ class Game:
         # at the end of each game write the payoff into each row of the agent
 
 
+    def save_action(self, player):
+        # save the action of the agent after he made his decision
+        self.output.at[self.output.shape[0]-1,'action'] = self.players[player].last_actions[-1]
+
+
     def add_reward(self):
         '''
         The function add_reward adds the reward of each player to the output
         data frame that is written to the database.
         '''
+        #print(self.output)
         self.output['reward'] = self.output['player']
         for i in range(self.output.shape[0]):
             self.output.at[i, 'reward'] =\
@@ -688,22 +769,31 @@ class Game:
         The function action calls all agents sequentially to decide on their action
         '''
         # action of the small blind player
-        self.players[self.order[0]].do(self.highest_bid, self.limit, blind='small')
+        self.players[self.order[0]].do(self.highest_bet, self.limit, [], blind='small')
 
         # action of the big blind player
-        self.players[self.order[1]].do(self.highest_bid, self.limit, blind='big')
-        self.highest_bid = self.players[self.order[1]].own_bid
-        #print(f'The highest bid after the big blind is {self.highest_bid}')
+        self.players[self.order[1]].do(self.highest_bet, self.limit, [], blind='big')
+        self.highest_bet = self.players[self.order[1]].own_bet
+        #print(f'The highest bet after the big blind is {self.highest_bet}')
 
         # let the non-blind players take their turn
         for position, player in enumerate(self.order[2:]):
+            if self.highest_bet == self.stack:
+                self.players[player].do(self.highest_bet, self.limit, [[self.players[player].input_card_embedding], [self.players[player].input_state]])
             # for jedem do muss die Information ausgelesen werden
             #self.write_data(player, position)
-            self.players[player].do(self.highest_bid, self.limit)
-            self.collect_data(player, position+2)
-            #print(f'player {position+1} bet {self.players[position].own_bid}')
-            if self.players[player].own_bid > self.highest_bid:
-                self.highest_bid = self.players[player].own_bid
+            else:
+                self.collect_data(player, position+2)
+                #print(f'The current state is described by {self.output.loc[[self.output.shape[0]-1]]} and the output shape is {self.output.shape[0]}')
+                self.players[player].create_embedding_input(self.output.loc[[self.output.shape[0]-1]])
+                self.players[player].create_state_input(self.output.loc[[self.output.shape[0]-1]])
+#                print(f'''The inputs for the action will be the cards {self.players[player].input_card_embedding} and the rest of the state {self.players[player].input_state }
+#                or combined {[[self.players[player].input_card_embedding], [self.players[player].input_state]]}''')
+                self.players[player].do(self.highest_bet, self.limit, [[self.players[player].input_card_embedding], [self.players[player].input_state]])
+                self.save_action(player)
+                #print(f'player {position+1} bet {self.players[position].own_bet}')
+                if self.players[player].own_bet > self.highest_bet:
+                    self.highest_bet = self.players[player].own_bet
 
         self.active_players = self.eliminate_players()
 
@@ -740,8 +830,8 @@ class Game:
         '''
         self.iterative_play()
 
-        return print(f'Round {self.round} is over and {self.active_players} \
-        players are still in the game')
+        return print(f'''Round {self.round} is over and {self.active_players}
+        players are still in the game''')
 
 
     def deal_turn(self):
@@ -750,7 +840,7 @@ class Game:
         '''
         self.flop.append(self.deck.pop())
         [player.hand.append(Card(self.flop[-1])) for player in self.players]
-        print(f'The cards after the turn are: {self.flop}')
+        print(f'The community cards after the turn are: {self.flop}')
 
 
     def deal_river(self):
@@ -759,7 +849,7 @@ class Game:
         '''
         self.flop.append(self.deck.pop())
         [player.hand.append(Card(self.flop[-1])) for player in self.players]
-        print(f'The cards after the river are: {self.flop}')
+        print(f'The community cards after the river are: {self.flop}')
 
 
     def pass_to_next_game(self):
@@ -776,15 +866,15 @@ class Game:
                     best_hands.append(player.evaluate_hand())
             winning_hand = sorted(best_hands, key=lambda x: (x[2], x[3]),\
                 reverse=False)[0]
-            print(f'Player {winning_hand[5]} wins with a {winning_hand[1]}. \
-            His hand is {winning_hand[4]}')
+            print(f'''Player {winning_hand[5]} wins with a {winning_hand[1]}.
+            His hand is {winning_hand[4]}''')
             self.winner = winning_hand[5]
         else:
             for player in self.players:
                 if player.active == 1:
                     self.winner = player.name
-                    print(f'Player {self.winner} wins because everyone else dropped\
-                    out.')
+                    print(f'''Player {self.winner} wins because everyone else dropped
+                    out.''')
 
         # distribute the pot
         self.pot = self.determine_pot_size()
@@ -792,7 +882,7 @@ class Game:
         self.players[self.winner-1].stack += self.pot
 
         for player in self.players:
-            player.stack -= player.own_bid
+            player.stack -= player.own_bet
             print(f"Player {player.name}'s stack after game {self.game_count} \
             is {player.stack}.")
             player.reward = player.stack - player.stack_old
@@ -821,8 +911,8 @@ class Game:
             self.position_small += 1
 
 
-        # reset highest_bid
-        self.highest_bid = 0
+        # reset highest_bet
+        self.highest_bet = 0
 
         # reset all players to be active
         self.active_players = self.nr_of_players
@@ -857,8 +947,8 @@ class Game:
         self.write_data()
 
     def __repr__(self):
-        return '''The game is in round {} and in game {}. The highest bid is {}.\
+        return '''The game is in round {} and in game {}. The highest bet is {}.\
         The position of the small blind is {}. \
         The total money in the pot will yet have to be created.\
         \n The players who are still in the game will have to be created.
-        '''.format(self.round, self.game_count, self.highest_bid, self.position_small+1)
+        '''.format(self.round, self.game_count, self.highest_bet, self.position_small+1)
