@@ -6,6 +6,7 @@ from tensorflow.keras import models, layers, metrics, optimizers
 from tensorflow.keras.models import model_from_json, Sequential
 from tensorflow.keras.layers import Input, Dense, Activation, Conv2D, MaxPooling2D, Flatten, Dropout
 from tensorflow.keras import backend as K
+import tensorflow as tf
 import datetime
 
 DB = f'postgres://localhost/{"poker"}'
@@ -33,18 +34,22 @@ class Agent:
         self.input = ''
         self.train_fn = ''
 
+        self.build_model()
+
 
     def build_model(self):
         '''
         The function build_model sets up the basic structure for the model that is going to be trained.
         '''
+        #K.clear_session()
+
         # Card embeddings
-        card_input = Input(shape=7)
+        card_input = Input(shape=(7,))
         card_output = layers.Embedding(self.max_features, self.vector_size, input_length=self.max_len)(card_input)
         card_output = layers.Flatten()(card_output)
 
         # Other information
-        state_input = Input(shape=13)
+        state_input = Input(shape=(13,))
 
         #Merge and add dense layer
         merge_layer = layers.concatenate([state_input, card_output])
@@ -55,14 +60,16 @@ class Agent:
         # Define model with two inputs
         self.model = models.Model(inputs=[card_input, state_input], outputs=[main_output])
 
+
         #    action_prob_ph = self.model.output
-        action_prob = K.sum(self.model.output)
-        action_onehot_ph = K.placeholder(shape=(None, 3),
+        action_prob_ph = self.model.output#K.sum(self.model.output)
+        #print(f'The probabilities for the three actions are {action_prob_ph}')
+        self.action_onehot_ph = K.placeholder(shape=(None, 3),
                                                  name="action_onehot")
         discount_reward_ph = K.placeholder(shape=(None,),
                                                     name="discount_reward")
 
-        #action_prob = K.sum(action_prob_ph * action_onehot_ph, axis=1)
+        action_prob = K.sum(action_prob_ph * self.action_onehot_ph, axis=1)
         log_action_prob = K.log(action_prob)
 
         loss = - log_action_prob * discount_reward_ph
@@ -74,21 +81,30 @@ class Agent:
                                    #constraints=[],
                                    loss=loss)
 
-        self.train_fn = K.function(inputs=[self.model.input,
-                                           action_onehot_ph,
+        self.train_fn = K.function(inputs=[self.model.input[0],
+                                            self.model.input[1],
+                                           self.action_onehot_ph,
                                            discount_reward_ph],
                                    outputs=[action_prob], updates=updates)
 
-        self.model.compile(optimizer=adam, loss='sparse_categorical_crossentropy')
+        self.model.compile(optimizer=adam, loss='categorical_crossentropy')
+
+        # for i in tf.get_default_graph().get_operations():
+        #     if i.name == 'action_onehot' or i.name == 'discount_reward':
+        #         print(i.name)
 
         return self.model
 
 
-    def read_model(self):
+    def read_data(self):
         '''
         The method read_model reads the data saved into the postgres database.
         '''
         self.input = pd.read_sql('results', con=ENGINE)
+
+        # for i in tf.get_default_graph().get_operations():
+        #     if i.name == 'action_onehot' or i.name == 'discount_reward':
+        #         print(i.name + 'read')
 
 
     def create_embedding_input(self):
@@ -97,39 +113,50 @@ class Agent:
         '''
         # I will have to refactor the code here because this code will create matrices for the action functions but I only want an array
         # However, for the model improvement I will want to have all of them
-        if self.input.shape[0] > 1:
-            cards = np.array(self.input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']].loc[0])
-            for i in range(1, self.input.shape[0]):
-                cards = np.vstack((cards, np.array(self.input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']].loc[i])))
-        else:
-            cards = np.array(self.input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']])
+        self.input_card_embedding = self.input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']].to_numpy()
 
-        self.input_card_embedding = np.squeeze(cards)
-        print('The card embedding input is {}'.format(self.input_card_embedding))
+#        self.input_card_embedding = np.squeeze(cards)
+        #print('The card embedding input is {}'.format(self.input_card_embedding))
+
+        # for i in tf.get_default_graph().get_operations():
+        #     if i.name == 'action_onehot' or i.name == 'discount_reward':
+        #         print(i.name + 'embedding')
 
 
     def create_state_input(self):
         '''
         The function create_state_input creates the input for the neural network apart from the card embeddings
         '''
-        if self.input.shape[0] > 1:
-            state = np.array(self.input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
-            'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']].loc[0])
-            for i in range(1, self.input.shape[0]):
-                state = np.vstack((state, np.array(self.input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
-                'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']].loc[i])))
-        else:
-            state = np.array(self.input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
-            'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']])
+        self.input_state = self.input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
+        'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']].to_numpy()
 
-        self.input_state = np.squeeze(state)
+#        self.input_state = np.squeeze(state)
+
+        # for i in tf.get_default_graph().get_operations():
+        #     if i.name == 'action_onehot' or i.name == 'discount_reward':
+        #         print(i.name + 'state')
 
 
-    def train_model(self, states, actions, rewards):
+    def train_model(self, cards, states, actions, rewards):
         '''
         The method train_model trains the model after every nth game.
         '''
-        train_fn(inputs=[states, actions, rewards])
+        for i in tf.get_default_graph().get_operations():
+            if i.name == 'action_onehot' or i.name == 'discount_reward':
+                print(i.name)
+
+#        print(f'The operations are: {tf.get_default_graph().get_operations()}')
+        b = np.zeros((actions.shape[0], 3))
+        b[np.arange(actions.shape[0]), actions] = 1
+
+        n = actions.shape[0]
+        assert rewards.shape[0] == n
+        assert cards.shape[0] == n
+        assert states.shape[0] == n
+        assert b.shape[1] == 3
+        assert cards.shape[1] == 7
+        assert states.shape[1] == 13
+        self.train_fn(inputs=[cards, states, b, rewards])
 
 
     def train(self, X, y, epochs):
@@ -144,9 +171,17 @@ class Agent:
         self.model.save_weights(f'./weights/weights_{date_string}.h5')
 
     def load(self, date_string):
-        K.clear_session()
+        # for i in tf.get_default_graph().get_operations():
+        #     if i.name == 'action_onehot' or i.name == 'discount_reward':
+        #         print(i.name + 'load_1')
+        #K.clear_session()
         with open(f'./weights/weights_{date_string}.json', 'r') as f:
             json = f.read()
         self.model = model_from_json(json)
         self.model.load_weights(f'./weights/weights_{date_string}.h5')
-        self.model.compile(optimizer=adam, loss='categorical_crossentropy')
+        # 'adam' als string nimmt allerdings die Standardeinstellungen von adam
+        self.model.compile(optimizer='adam', loss='categorical_crossentropy')
+
+        # for i in tf.get_default_graph().get_operations():
+        #     if i.name == 'action_onehot' or i.name == 'discount_reward':
+        #         print(i.name + 'load_2')

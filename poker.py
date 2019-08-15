@@ -17,9 +17,6 @@ from tensorflow.keras import backend as K
 from tensorflow import logging
 from agent import Agent
 
-# silence future warnings from tensorflow
-logging.set_verbosity(logging.ERROR)
-
 
 # establish a connection to the database
 DB = f'postgres://localhost/{"poker"}'
@@ -303,12 +300,7 @@ class Player():
         '''
         # I will have to refactor the code here because this code will create matrices for the action functions but I only want an array
         # However, for the model improvement I will want to have all of them
-        if input.shape[0] > 1:
-            cards = np.array(input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']].loc[0])
-            for i in range(1, input.shape[0]):
-                cards = np.vstack((cards, np.array(input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']].loc[i])))
-        else:
-            cards = np.array(input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']])
+        cards = input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']].to_numpy()
 
         self.input_card_embedding = np.squeeze(cards)
 
@@ -317,16 +309,8 @@ class Player():
         '''
         The function create_state_input creates the input for the neural network apart from the card embeddings
         '''
-        if input.shape[0] > 1:
-            state = np.array(input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
-            'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']].loc[0])
-            for i in range(1, input.shape[0]):
-                state = np.vstack((rest, np.array(input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
-                'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']].loc[i])))
-        else:
-            state = np.array(input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
-            'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']])
-
+        state = input[['position', 'round', 'active_0', 'active_1', 'active_2', 'active_3', 'active_4', \
+            'bet', 'bet_0', 'bet_1', 'bet_2', 'bet_3', 'bet_4']].to_numpy()
 
         self.input_state = np.squeeze(state)
 
@@ -349,17 +333,17 @@ class Player():
         '''
         self.last_actions.append(0)
         self.active = 0
-        print(f'Player {self.name}: My cards are sh..! I fold!')
+        #print(f'Player {self.name}: My cards are sh..! I fold!')
 
 
-    def check(self):
-        '''
-        The player checks.
-        Quasi deprecated because the machine does not care about calling or checking.
-        '''
-        self.last_actions.append(999)
-        print(f'Player {self.name}: I am curious what is going to happen.\
-            I am checking!')
+#    def check(self):
+        # '''
+        # The player checks.
+        # Quasi deprecated because the machine does not care about calling or checking.
+        # '''
+        # self.last_actions.append(999)
+        # #print(f'Player {self.name}: I am curious what is going to happen.\
+        #     I am checking!')
 
 
     def call(self, highest_bet):
@@ -460,7 +444,7 @@ class Game:
     and the game thus unfolds.
     '''
 
-    def __init__(self, nr_of_players, blind, stack, agent, limit=200):
+    def __init__(self, nr_of_players, blind, stack, agents, limit=200):
         self.nr_of_players = nr_of_players
         self.limit = limit
         self.blind = blind
@@ -484,11 +468,12 @@ class Game:
         self.d = {}
         # faces as lists
         self.face = self.faces.split()
-        self.agent = agent
+        self.agent = agents
 
         for p in range(self.nr_of_players):
-            player = Player(self.stack, self.blind, p+1, self.agent)
+            player = Player(self.stack, self.blind, p+1, self.agent[p%2])
             self.players.append(player)
+            print(f'successfully created player {p}. He is a {self.players[p].agent}.')
 
         self.output = pd.DataFrame()
 
@@ -681,6 +666,7 @@ class Game:
         # agent_id of agent that is making the observation
         d['player'] = player
         d['position'] = position
+        d['agent'] = str(self.players[player].agent)
         d['round'] = self.round
         d['game'] = self.game_count
         d['action'] = ''
@@ -888,6 +874,7 @@ class Game:
             player.reward = player.stack - player.stack_old
             # update old stack for the next round
             player.stack_old = player.stack
+            player.own_bet = 0
 
         # set pot to zero again
         self.pot = 0
