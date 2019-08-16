@@ -2,14 +2,14 @@ import itertools
 import pandas as pd
 import sqlalchemy as sqa
 import numpy as np
-from tensorflow.keras import models, layers, metrics, optimizers
+from tensorflow.keras import models, layers, metrics, optimizers, utils
 from tensorflow.keras.models import model_from_json, Sequential
-from tensorflow.keras.layers import Input, Dense, Activation, Conv2D, MaxPooling2D, Flatten, Dropout
+from tensorflow.keras.layers import Input, Dense, Activation, Conv2D, MaxPooling2D, Flatten, Dropout, BatchNormalization
 from tensorflow.keras import backend as K
 import tensorflow as tf
 import datetime
 
-DB = f'postgres://localhost/{"poker"}'
+DB = f'postgres://localhost/poker'
 ENGINE = sqa.create_engine(DB)
 
 max_features = 53
@@ -46,6 +46,7 @@ class Agent:
         # Card embeddings
         card_input = Input(shape=(7,))
         card_output = layers.Embedding(self.max_features, self.vector_size, input_length=self.max_len)(card_input)
+        #card_output = layers.BatchNormalization()(card_output)
         card_output = layers.Flatten()(card_output)
 
         # Other information
@@ -53,8 +54,12 @@ class Agent:
 
         #Merge and add dense layer
         merge_layer = layers.concatenate([state_input, card_output])
-        x = layers.Dense(64, activation='relu')(merge_layer)
+        x = layers.BatchNormalization()(merge_layer)
+        x = layers.Dense(64, activation='relu')(x)
+        #x = layers.Dense(64, activation='relu')(merge_layer)
+        x = layers.BatchNormalization()(x)
         x = layers.Dense(32, activation='relu')(x)
+        x = layers.BatchNormalization()(x)
         main_output = layers.Dense(3, activation='softmax')(x)
 
         # Define model with two inputs
@@ -64,30 +69,30 @@ class Agent:
         #    action_prob_ph = self.model.output
         action_prob_ph = self.model.output#K.sum(self.model.output)
         #print(f'The probabilities for the three actions are {action_prob_ph}')
-        self.action_onehot_ph = K.placeholder(shape=(None, 3),
+        action_onehot_ph = K.placeholder(shape=(None, 3),
                                                  name="action_onehot")
         discount_reward_ph = K.placeholder(shape=(None,),
                                                     name="discount_reward")
 
-        action_prob = K.sum(action_prob_ph * self.action_onehot_ph, axis=1)
+        action_prob = K.sum(action_prob_ph * action_onehot_ph, axis=1)
         log_action_prob = K.log(action_prob)
 
         loss = - log_action_prob * discount_reward_ph
         loss = K.mean(loss)
 
-        adam = optimizers.Adam()
+        self.adam = optimizers.Adam(clipvalue=0.5)
 
-        updates = adam.get_updates(params=self.model.trainable_weights,
+        updates = self.adam.get_updates(params=self.model.trainable_weights,
                                    #constraints=[],
                                    loss=loss)
 
         self.train_fn = K.function(inputs=[self.model.input[0],
                                             self.model.input[1],
-                                           self.action_onehot_ph,
+                                           action_onehot_ph,
                                            discount_reward_ph],
-                                   outputs=[action_prob], updates=updates)
+                                   outputs=[loss, action_onehot_ph+1, action_prob_ph, action_prob, log_action_prob, discount_reward_ph+1], updates=updates)
 
-        self.model.compile(optimizer=adam, loss='categorical_crossentropy')
+        self.model.compile(optimizer=self.adam, loss='categorical_crossentropy')
 
         # for i in tf.get_default_graph().get_operations():
         #     if i.name == 'action_onehot' or i.name == 'discount_reward':
@@ -96,11 +101,12 @@ class Agent:
         return self.model
 
 
-    def read_data(self):
+    def read_data(self, table_name):
         '''
         The method read_model reads the data saved into the postgres database.
         '''
-        self.input = pd.read_sql('results', con=ENGINE)
+        self.input = pd.read_sql(table_name, con=ENGINE)
+        #print(f'The data read in is {self.input}')
 
         # for i in tf.get_default_graph().get_operations():
         #     if i.name == 'action_onehot' or i.name == 'discount_reward':
@@ -146,17 +152,27 @@ class Agent:
                 print(i.name)
 
 #        print(f'The operations are: {tf.get_default_graph().get_operations()}')
-        b = np.zeros((actions.shape[0], 3))
-        b[np.arange(actions.shape[0]), actions] = 1
+        #b = np.zeros((actions.shape[0], 3))
+        #b[np.arange(actions.shape[0]), actions] = 1
+
+        action_onehot = utils.to_categorical(actions, num_classes=3)
+        rewards = np.float32(rewards)
+        cards = np.float32(cards)
+        states = np.float32(states)
 
         n = actions.shape[0]
         assert rewards.shape[0] == n
         assert cards.shape[0] == n
         assert states.shape[0] == n
-        assert b.shape[1] == 3
+        assert action_onehot.shape[1] == 3
         assert cards.shape[1] == 7
         assert states.shape[1] == 13
-        self.train_fn(inputs=[cards, states, b, rewards])
+        print(f'''The states are {states}, the cards are {cards}, the actions are {action_onehot} and the rewards are {rewards}.
+        #We are going to train the model using these inputs.''')
+        loss = self.train_fn(inputs=[cards, states, action_onehot, rewards])
+        #log_loss = np.log(loss[1])
+        #log_loss
+        return loss[0]
 
 
     def train(self, X, y, epochs):
@@ -167,7 +183,9 @@ class Agent:
     def save(self):
         date_string = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
         with open(f"./weights/weights_{date_string}.json", "w") as json_file:
+        #with open('./weights/weights_test2.json', 'w') as json_file:
             json_file.write(self.model.to_json())
+        #self.model.save_weights('./weights/weights_test2.h5')
         self.model.save_weights(f'./weights/weights_{date_string}.h5')
 
     def load(self, date_string):
@@ -175,12 +193,42 @@ class Agent:
         #     if i.name == 'action_onehot' or i.name == 'discount_reward':
         #         print(i.name + 'load_1')
         #K.clear_session()
+        #self.build_model()
         with open(f'./weights/weights_{date_string}.json', 'r') as f:
             json = f.read()
         self.model = model_from_json(json)
         self.model.load_weights(f'./weights/weights_{date_string}.h5')
-        # 'adam' als string nimmt allerdings die Standardeinstellungen von adam
-        self.model.compile(optimizer='adam', loss='categorical_crossentropy')
+        # 'self.adam' als string nimmt allerdings die Standardeinstellungen von self.adam
+        #self.model.compile(optimizer='adam', loss='categorical_crossentropy')
+        #self.build_model()
+
+        #    action_prob_ph = self.model.output
+        action_prob_ph = self.model.output#K.sum(self.model.output)
+        #print(f'The probabilities for the three actions are {action_prob_ph}')
+        action_onehot_ph = K.placeholder(shape=(None, 3),
+                                                 name="action_onehot")
+        discount_reward_ph = K.placeholder(shape=(None,),
+                                                    name="discount_reward")
+
+        action_prob = K.sum(action_prob_ph * action_onehot_ph, axis=1)
+        log_action_prob = K.log(action_prob)
+
+        loss = - log_action_prob * discount_reward_ph
+        loss = K.mean(loss)
+
+        self.adam = optimizers.Adam(clipvalue=0.5)
+
+        updates = self.adam.get_updates(params=self.model.trainable_weights,
+                                   #constraints=[],
+                                   loss=loss)
+
+        self.train_fn = K.function(inputs=[self.model.input[0],
+                                            self.model.input[1],
+                                           action_onehot_ph,
+                                           discount_reward_ph],
+                                   outputs=[loss, action_onehot_ph+1, action_prob_ph, action_prob, log_action_prob, discount_reward_ph+1], updates=updates)
+
+        self.model.compile(optimizer=self.adam, loss='categorical_crossentropy')
 
         # for i in tf.get_default_graph().get_operations():
         #     if i.name == 'action_onehot' or i.name == 'discount_reward':
