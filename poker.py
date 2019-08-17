@@ -443,12 +443,13 @@ class Game:
     limit: the limit of the bets in each game
     blind: the size of the big blind
     stack: the size of the initial stack of the game
+    db_table: name of the table the results should be written to
 
     and creates a pokergame where you can deal the cards, players can fold, call or raise
     and the game thus unfolds.
     '''
 
-    def __init__(self, nr_of_players, blind, stack, agents, limit=200):
+    def __init__(self, nr_of_players, blind, stack, agents, db_table, limit=200):
         self.nr_of_players = nr_of_players
         self.limit = limit
         self.blind = blind
@@ -473,6 +474,7 @@ class Game:
         # faces as lists
         self.face = self.faces.split()
         self.agent = agents
+        self.db_table = db_table
 
         for p in range(self.nr_of_players):
             if type(self.agent) == list:
@@ -750,7 +752,7 @@ class Game:
         The function write_data writes the collected data into the postgres
         database "poker"
         '''
-        self.output.to_sql('results', con=ENGINE, if_exists='append')
+        self.output.to_sql(self.db_table, con=ENGINE, if_exists='append')
 
         #print('Wrote the data into the database!')
 

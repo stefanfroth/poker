@@ -421,7 +421,7 @@ class Player():
                 , highest_card, self.name))
 
         ranked = sorted(hand_values_rank, key=lambda x: (x[2], x[3]), reverse=False)
-       #print([(card.face, card.suit) for card in possible_hands[ranked[0][0]]])
+        print([(card.face, card.suit) for card in possible_hands[ranked[0][0]]])
         print(f'The best hand of player {self.name} is a {ranked[0][1]}')
 
         #if ranked[0][3][0] in [ranked[i][3][0] for i in range(len(hand_values_rank))]:
@@ -448,7 +448,7 @@ class Game:
     and the game thus unfolds.
     '''
 
-    def __init__(self, nr_of_players, blind, stack, agents, limit=200):
+    def __init__(self, nr_of_players, blind, stack, agents, db_table, limit=200):
         self.nr_of_players = nr_of_players
         self.limit = limit
         self.blind = blind
@@ -473,6 +473,7 @@ class Game:
         # faces as lists
         self.face = self.faces.split()
         self.agent = agents
+        self.db_table = db_table
 
         for p in range(self.nr_of_players):
             if type(self.agent) == list:
@@ -750,7 +751,7 @@ class Game:
         The function write_data writes the collected data into the postgres
         database "poker"
         '''
-        self.output.to_sql('results', con=ENGINE, if_exists='append')
+        self.output.to_sql(self.db_table, con=ENGINE, if_exists='append')
 
         print('Wrote the data into the database!')
 
@@ -768,7 +769,7 @@ class Game:
         # action of the big blind player
         self.players[self.order[1]].do(self.highest_bet, self.limit, [], blind='big')
         self.highest_bet = self.players[self.order[1]].own_bet
-        print(f'The highest bet after the big blind is {self.highest_bet}')
+        #print(f'The highest bet after the big blind is {self.highest_bet}')
 
         # let the non-blind players take their turn
         for position, player in enumerate(self.order[2:]):
@@ -778,7 +779,7 @@ class Game:
             #self.write_data(player, position)
             else:
                 self.collect_data(player, position+2)
-                print(f'The current state is described by {self.output.loc[[self.output.shape[0]-1]]} and the output shape is {self.output.shape[0]}')
+                #print(f'The current state is described by {self.output.loc[[self.output.shape[0]-1]]} and the output shape is {self.output.shape[0]}')
                 self.players[player].create_embedding_input(self.output.loc[[self.output.shape[0]-1]])
                 self.players[player].create_state_input(self.output.loc[[self.output.shape[0]-1]])
 #                print(f'''The inputs for the action will be the cards {self.players[player].input_card_embedding} and the rest of the state {self.players[player].input_state }

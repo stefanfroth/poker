@@ -9,16 +9,17 @@ BLIND = 50
 STACK = 10000
 LIMIT = 100
 GAMES = 1000
+DB_TABLE = 'v1vv2_2019_08_17_11:01'
 
 agent1 = Agent()
 agent1.load('2019-08-15-15:29')
 
 agent2 = Agent()
-agent2.load('2019-08-16-13:59')
+agent2.load('2019-08-17-11:01')
 
 AGENTS = [agent1, agent2]
 
-g = Game(PLAYERS, BLIND, STACK, agents=[agent1, agent2], limit=LIMIT)
+g = Game(PLAYERS, BLIND, STACK, agents=[agent1, agent2], db_table=DB_TABLE, limit=LIMIT)
 print('Let the games begin!')
 
 for i in range(GAMES):

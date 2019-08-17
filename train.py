@@ -30,7 +30,7 @@ AGENT.create_state_input()
 #print(f'The model operations are: {AGENT.model.get_operations()}')
 losses = []
 #print(f'The optimizer is: {AGENT.adam}')
-for i in range(100):
+for i in range(20):
     losses.append(AGENT.train_model(AGENT.input_card_embedding, AGENT.input_state, np.array(AGENT.input['action']), np.array(AGENT.input['reward'])))
 #print(f'The models weights after training are: {AGENT.model.get_weights()}')
 #time.sleep(60)

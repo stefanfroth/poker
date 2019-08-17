@@ -15,16 +15,17 @@ PLAYERS = 6
 BLIND = 50
 STACK = 10000
 LIMIT = 100
-GAMES = 25000
+GAMES = 20000
+DB_TABLE = 'v2_2019_08_17_11_56'
 AGENT = Agent()
-AGENT.load('2019-08-16-13:59')
+AGENT.load('v2_2019-08-17-11:01')
 print(f'The models weights before playing are: {AGENT.model.get_weights()}')
 
 
 #AGENT.build_model()
 # #print(AGENT.model.layers[1].get_weights())
 #
-g = Game(PLAYERS, BLIND, STACK, AGENT, LIMIT)
+g = Game(PLAYERS, BLIND, STACK, AGENT, DB_TABLE, LIMIT)
 #
 #
 for i in range(GAMES):
