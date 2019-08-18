@@ -110,7 +110,6 @@ venv.bak/
 # Prevent the lecture files from being uploaded
 concept/*
 theory/*
-weights/*
 PNG/*
 
 # Amazon stuff
