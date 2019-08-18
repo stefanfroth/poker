@@ -113,6 +113,9 @@ theory/*
 weights/*
 PNG/*
 
+# Amazon stuff
+ec2/*
+
 todo.txt
 =======
 >>>>>>> Initial commit
