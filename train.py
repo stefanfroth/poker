@@ -17,9 +17,9 @@ AGENT = Agent()
 
 #print(f'The models weights before loading are: {AGENT.model.get_weights()}')
 
-AGENT.load('2019-08-17-11:01')
+AGENT.load('v3_2019-08-17-19:11_20_epochs')
 #print(f'The models weights after loading are: {AGENT.model.get_weights()}')
-AGENT.read_data('v2_2019_08_17_11_56')
+AGENT.read_data('v3_2019_08_17_21_42')
 #print('Read the data successfully')
 AGENT.create_embedding_input()
 #print(f'Created embedding input {AGENT.input_card_embedding}')
@@ -30,7 +30,7 @@ AGENT.create_state_input()
 #print(f'The model operations are: {AGENT.model.get_operations()}')
 losses = []
 #print(f'The optimizer is: {AGENT.adam}')
-for i in range(100):
+for i in range(20):
     losses.append(AGENT.train_model(AGENT.input_card_embedding, AGENT.input_state, np.array(AGENT.input['action']), np.array(AGENT.input['reward'])))
 #print(f'The models weights after training are: {AGENT.model.get_weights()}')
 #time.sleep(60)

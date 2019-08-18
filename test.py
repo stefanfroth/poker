@@ -9,13 +9,13 @@ BLIND = 50
 STACK = 10000
 LIMIT = 100
 GAMES = 1000
-DB_TABLE = 'v1vv2_2019_08_17_11:01'
+DB_TABLE = 'v3vv4_2019_08_18_10:11'
 
 agent1 = Agent()
-agent1.load('2019-08-15-15:29')
+agent1.load('v3_2019-08-17-19:11_20_epochs')
 
 agent2 = Agent()
-agent2.load('2019-08-17-11:01')
+agent2.load('v4_2019-08-18-10:02_20_epochs')
 
 AGENTS = [agent1, agent2]
 
