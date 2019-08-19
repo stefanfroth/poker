@@ -3,7 +3,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import numpy as np
-from poker import Game
+from poker_greedy import Game
 from agent import Agent
 import time
 start_time = time.time()
@@ -15,10 +15,10 @@ PLAYERS = 6
 BLIND = 50
 STACK = 10000
 LIMIT = 100
-GAMES = 200
-DB_TABLE = 'v3_2019_08_17_21_42'
+GAMES = 20000
+DB_TABLE = 'v5_2019_08_18_22_50'
 AGENT = Agent()
-AGENT.load('v3_2019-08-17-19:11_20_epochs')
+AGENT.load('v5_2019-08-18-22:45_20_epochs')
 print(f'The models weights before playing are: {AGENT.model.get_weights()}')
 
 

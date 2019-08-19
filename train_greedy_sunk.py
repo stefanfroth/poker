@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 #import tensorflow as tf
 import datetime
-from agent import Agent
+from agent_greedy_sunk import Agent
 import time
 
 #log_dir="logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -17,9 +17,9 @@ AGENT = Agent()
 
 #print(f'The models weights before loading are: {AGENT.model.get_weights()}')
 
-AGENT.load('v5_2019-08-18-22:45_20_epochs')
+AGENT.load('2019-08-18-16:51_greedy')
 #print(f'The models weights after loading are: {AGENT.model.get_weights()}')
-AGENT.read_data('v5_2019_08_18_22_50')
+AGENT.read_data('sunk')
 #print('Read the data successfully')
 AGENT.create_embedding_input()
 #print(f'Created embedding input {AGENT.input_card_embedding}')
@@ -36,10 +36,10 @@ for i in range(20):
 #time.sleep(60)
 AGENT.save()
 loss = pd.DataFrame(losses)
-print(f'The loss is {loss}')
-loss.to_csv(f'./loss/loss_{datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")}.csv')
+#print(f'The loss is {loss}')
+loss.to_csv(f'loss_{datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")}.csv')
 
-print('''We have retrained the network.
-This took {} to run'''.format(time.time() - start_time))
+#print('''We have retrained the network.
+#This took {} to run'''.format(time.time() - start_time))
 
 #tensorboard --logdir logs/fit
