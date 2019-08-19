@@ -17,9 +17,9 @@ AGENT = Agent()
 
 #print(f'The models weights before loading are: {AGENT.model.get_weights()}')
 
-AGENT.load('v5_2019-08-18-22:45_20_epochs')
+AGENT.load('v6_2019-08-19-09:30_20_epochs')
 #print(f'The models weights after loading are: {AGENT.model.get_weights()}')
-AGENT.read_data('v5_2019_08_18_22_50')
+AGENT.read_data('v6_2019_08_18_12_43')
 #print('Read the data successfully')
 AGENT.create_embedding_input()
 #print(f'Created embedding input {AGENT.input_card_embedding}')

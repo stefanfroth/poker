@@ -318,7 +318,7 @@ class Player():
     def chose_action(self, state):
         # incorporate some randomness into the decision in order to make more observations of folding
         eps = random.random()
-        if eps > 0.1:
+        if eps > 0.2:
             self.action = np.squeeze(np.random.choice(3, 1, p=np.squeeze(self.agent.model.predict(state))))
         else:
             self.action = np.squeeze(np.random.choice(3))
