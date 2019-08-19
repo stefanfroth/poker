@@ -56,7 +56,7 @@ class Agent:
         card_output = layers.Flatten()(card_output)
 
         # Other information
-        state_input = Input(shape=(19,))
+        state_input = Input(shape=(18,))
 
         #Merge and add dense layer
         merge_layer = layers.concatenate([state_input, card_output])
@@ -86,7 +86,7 @@ class Agent:
         loss = - log_action_prob * reward_ph
         loss = K.mean(loss)
 
-        self.adam = optimizers.Adam(clipvalue=0.5)
+        self.adam = optimizers.Adam(clipnorm=1.0, clipvalue=0.1)
 
         updates = self.adam.get_updates(params=self.model.trainable_weights,
                                    #constraints=[],
@@ -139,7 +139,7 @@ class Agent:
         '''
         The function create_state_input creates the input for the neural network apart from the card embeddings
         '''
-        self.input_state = self.input[['position', 'round', 'action_last_0', 'bet', \
+        self.input_state = self.input[['position', 'round', 'bet', \
         'action_last_0', 'action_last_1', 'action_last_2', 'action_last_3', 'action_last_4',  \
         'action_second_0', 'action_second_1', 'action_second_2', 'action_second_3', 'action_second_4', \
         'action_third_0', 'action_third_1', 'action_third_2', 'action_third_3', 'action_third_4'\
@@ -175,7 +175,7 @@ class Agent:
         assert states.shape[0] == n
         assert action_onehot.shape[1] == 3
         assert cards.shape[1] == 7
-        assert states.shape[1] == 19
+        assert states.shape[1] == 18
         print(f'''The states are {states}, the cards are {cards}, the actions are {action_onehot} and the rewards are {rewards}.
         #We are going to train the model using these inputs.''')
         loss = self.train_fn(inputs=[cards, states, action_onehot, rewards])
@@ -189,13 +189,13 @@ class Agent:
         #score = self.model.evaluate(X, y, batch_size=50)
         print("The model was trained.")
 
-    def save(self):
+    def save(self, table_name):
         date_string = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
-        with open(f"weights_{date_string}.json", "w") as json_file:
+        with open(f"weights_{table_name}_{date_string}.json", "w") as json_file:
         #with open('./weights/weights_test2.json', 'w') as json_file:
             json_file.write(self.model.to_json())
         #self.model.save_weights('./weights/weights_test2.h5')
-        self.model.save_weights(f'weights_{date_string}.h5')
+        self.model.save_weights(f'weights_{table_name}_{date_string}.h5')
 
     def load(self, date_string):
         # for i in tf.get_default_graph().get_operations():

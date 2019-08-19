@@ -748,8 +748,10 @@ class Game:
         #print(self.output)
         self.output['reward'] = self.output['player']
         for i in range(self.output.shape[0]):
-            self.output.at[i, 'reward'] =\
-            self.players[int(self.output.at[i, 'reward'])].reward
+            reward = self.players[int(self.output.at[i, 'reward'])].reward
+            bet_until_decision = self.output.at[i, 'bet'] * self.stack
+            self.output.at[i, 'reward'] = reward - bet_until_decision
+
 
 
     def write_data(self):

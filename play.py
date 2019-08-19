@@ -16,9 +16,9 @@ BLIND = 50
 STACK = 10000
 LIMIT = 100
 GAMES = 20000
-DB_TABLE = 'v5_2019_08_18_22_50'
+DB_TABLE = 'v6_2019_08_18_12_43'
 AGENT = Agent()
-AGENT.load('v5_2019-08-18-22:45_20_epochs')
+AGENT.load('v6_2019-08-19-09:30_20_epochs')
 print(f'The models weights before playing are: {AGENT.model.get_weights()}')
 
 

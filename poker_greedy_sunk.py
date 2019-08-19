@@ -16,6 +16,8 @@ from tensorflow.keras.layers import Input, Dense, Activation, Conv2D, MaxPooling
 from tensorflow.keras import backend as K
 from tensorflow import logging
 from agent_greedy_sunk import Agent
+import os
+import time
 
 
 host = 'poker.crvv64d8bwgs.eu-central-1.rds.amazonaws.com'
@@ -289,12 +291,12 @@ class Player():
         self.cardrankorder = {'a': 1, 'k': 2, 'q': 3, 'j': 4, 't': 5, '9': 6,
                               '8': 7, '7': 8, '6': 9, '5': 10,
                               '4': 11, '3': 12, '2': 13}
-        self.actions = {1: 'fold', 2: 'call', 3: 'raise'}
+        self.actions = {0: 'fold', 1: 'call', 2: 'raise'}
         self.max_features = 53
         self.vector_size = 4
         self.max_len = 7
         self.input_card_embedding = np.zeros((1,7))
-        self.input_state = np.zeros((1,13))
+        self.input_state = np.zeros((1,18))
         self.agent = agent
 
 #        self.build_model()
@@ -315,7 +317,7 @@ class Player():
         '''
         The function create_state_input creates the input for the neural network apart from the card embeddings
         '''
-        state = input[['position', 'round', 'action_last_0', 'bet', \
+        state = input[['position', 'round', 'bet', \
         'action_last_0', 'action_last_1', 'action_last_2', 'action_last_3', 'action_last_4',  \
         'action_second_0', 'action_second_1', 'action_second_2', 'action_second_3', 'action_second_4', \
         'action_third_0', 'action_third_1', 'action_third_2', 'action_third_3', 'action_third_4']].to_numpy()
@@ -327,9 +329,9 @@ class Player():
         # incorporate some randomness into the decision in order to make more observations of folding
         eps = random.random()
         if eps > 0.1:
-            self.action = np.squeeze(np.random.choice(3, 1, p=np.squeeze(self.agent.model.predict(state)))+1)
+            self.action = np.squeeze(np.random.choice(3, 1, p=np.squeeze(self.agent.model.predict(state))))
         else:
-            self.action = np.squeeze(np.random.choice(3)+1)
+            self.action = np.squeeze(np.random.choice(3))
        #print('I chose the action {}'.format(self.action))
         return self.action
 
@@ -345,7 +347,7 @@ class Player():
         '''
         The player folds.
         '''
-        self.last_actions.append(1)
+        self.last_actions.append(0)
         self.active = 0
         print(f'Player {self.name}: My cards are sh..! I fold!')
 
@@ -364,7 +366,7 @@ class Player():
         '''
         The player calls.
         '''
-        self.last_actions.append(2)
+        self.last_actions.append(1)
         self.own_bet = highest_bet
         print(f'Player {self.name}: I think I can win this game. I am calling!')
 
@@ -373,7 +375,7 @@ class Player():
         '''
         The player raises the highest_bet.
         '''
-        self.last_actions.append(3)
+        self.last_actions.append(2)
         self.own_bet = highest_bet + limit
 
 
@@ -382,36 +384,40 @@ class Player():
         The function do determines the action of the player when it is his turn
         to bet.
         '''
-        #print(f'My own bet is {self.own_bet} and the original stack size is {self.stack_original}')
+        print(f'My own bet is {self.own_bet} and the stack size is {self.stack_original}')
+        #time.sleep(2)
         if blind == 'small': # was, wenn er nicht mehr genug Geld für den small blind hat?
             self.own_bet = self.blind
-            self.last_actions.append(3)
+            self.last_actions.append(2)
            #print(f'Player {self.name}: I have bet the small blind of ${self.blind}!')
         elif blind == 'big': # was, wenn er nicht mehr genug Geld für den big blind hat?
             self.own_bet = self.blind * 2
-            self.last_actions.append(3)
+            self.last_actions.append(2)
            #print(f'Player {self.name}: I have bet the big blind of ${self.blind*2}!')
-        elif highest_bet == self.stack and self.active == 1:
-        # if the agent went all in and is still active
-            self.call(highest_bet)
-            # otherwise
         else:
-            #if self.own_bet < highest_bet:
-            action = self.chose_action(state)
-            # check that it does not fold if player.own_bet == highest_bet
-            #else:
-            #    action = random.choice(['call', 'raise'])
-            #print(f'Player {self.name} chose action {action}.')
-            if action == 1:
-                self.fold()
-            #elif action == 'check':
-            #    self.check()
-            elif action == 2:
+            print(f'The highest bet is {highest_bet}')
+            if highest_bet == self.stack_original:
+            # if the agent went all in and is still active
                 self.call(highest_bet)
+            # otherwise
             else:
-                self.raise_bet(highest_bet, limit)
-            #print(f'''Player {self.name}: I have {self.actions[self.last_actions[-1]]}ed
-            #and am betting ${self.own_bet}!''')
+            #if self.own_bet < highest_bet:
+                action = self.chose_action(state)
+                # check that it does not fold if player.own_bet == highest_bet
+                #else:
+                #    action = random.choice(['call', 'raise'])
+                print(f'Player {self.name} chose action {action}.')
+                if action == 0:
+                    self.fold()
+                #elif action == 'check':
+                #    self.check()
+                elif action == 1:
+                    self.call(highest_bet)
+                else:
+                    self.raise_bet(highest_bet, limit)
+
+        print(f'''Player {self.name}: I have {self.actions[self.last_actions[-1]]}ed
+        and am betting ${self.own_bet}!''')
         #else:
         #    self.fold()
 
@@ -730,17 +736,17 @@ class Game:
                 d[f'active_{count}'] = self.players[p].active
                 #introduce values for the last three actions of the players
                 if len(self.players[p].last_actions) == 0:
-                    d[f'action_last_{count}'] = 0
-                    d[f'action_second_{count}'] = 0
-                    d[f'action_third_{count}'] = 0
+                    d[f'action_last_{count}'] = 3
+                    d[f'action_second_{count}'] = 3
+                    d[f'action_third_{count}'] = 3
                 elif len(self.players[p].last_actions) == 1:
                     d[f'action_last_{count}'] = self.players[p].last_actions[-1]/3
-                    d[f'action_second_{count}'] = 0
-                    d[f'action_third_{count}'] = 0
+                    d[f'action_second_{count}'] = 3
+                    d[f'action_third_{count}'] = 3
                 elif len(self.players[p].last_actions) == 2:
                     d[f'action_last_{count}'] = self.players[p].last_actions[-1]/3
                     d[f'action_second_{count}'] = self.players[p].last_actions[-2]/3
-                    d[f'action_third_{count}'] = 0
+                    d[f'action_third_{count}'] = 3
                 else:
                     d[f'action_last_{count}'] = self.players[p].last_actions[-1]/3
                     d[f'action_second_{count}'] = self.players[p].last_actions[-2]/3
@@ -775,7 +781,7 @@ class Game:
         self.output['reward'] = self.output['player']
         for i in range(self.output.shape[0]):
             reward = self.players[int(self.output.at[i, 'reward'])].reward
-            bet_until_decision = self.players[int(self.output.at[i, 'reward'])].own_bet
+            bet_until_decision = self.output.at[i, 'bet'] * self.stack
             # introduce the concept of sunk cost. When the player folds his reward will be 0.
             # otherwise it will be the total reward in the end - his own bet
             if self.output.at[i, 'action'] != '1':
@@ -799,8 +805,11 @@ class Game:
         The function write_data writes the collected data into the postgres
         database "poker"
         '''
-        self.output.to_csv(f'{self.db_table}.csv')#, con=ENGINE, if_exists='append')
-
+        # if file does not exist write header
+        if not os.path.isfile(f'{self.db_table}.csv'):
+           self.output.to_csv(f'{self.db_table}.csv', header='column_names')
+        else: # else it exists so append without writing the header
+           self.output.to_csv(f'{self.db_table}.csv', mode='a', header=False)
         #print('Wrote the data into the database!')
 
         # reset the output_frame
@@ -834,7 +843,7 @@ class Game:
 #                or combined {[[self.players[player].input_card_embedding], [self.players[player].input_state]]}''')
                 self.players[player].do(self.highest_bet, self.limit, [[self.players[player].input_card_embedding], [self.players[player].input_state]])
                 self.save_action(player)
-                print(f'player {position+1} bet {self.players[position].own_bet}')
+                print(f'player {position+3} bet {self.players[position+2].own_bet}')
                 if self.players[player].own_bet > self.highest_bet:
                     self.highest_bet = self.players[player].own_bet
 
