@@ -107,14 +107,24 @@ venv.bak/
 # .DS_Store
 .DS_Store
 
-# Prevent the lecture files from being uploaded
+# Prevent the background literature to be uploaded
 concept/*
 theory/*
-weights/*
 
+# Prevent pictures to be uploaded
 PNG/*
-ec2/*
+players/*
 
+# Prevent weights and losses from being uploaded
+weights/*
+loss/*
+
+# Amazon stuff
+ec2/*
+ec2*
+
+# Prevent old versions from being uploaded
+# versions/*
+
+# Prevent the todo file from being uploadeddurch die Konzeptionierung, Umsetzung und das Testen von Datenschnittstellen
 todo.txt
-=======
->>>>>>> Initial commit
