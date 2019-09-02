@@ -123,6 +123,10 @@ loss/*
 ec2/*
 ec2*
 
+# Prevent old versions from being uploaded
+# versions/*
+
+# Prevent the todo file from being uploadeddurch die Konzeptionierung, Umsetzung und das Testen von Datenschnittstellen
 todo.txt
 =======
 >>>>>>> Initial commit
