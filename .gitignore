@@ -112,6 +112,9 @@ concept/*
 theory/*
 weights/*
 
+PNG/*
+ec2/*
+
 todo.txt
 =======
 >>>>>>> Initial commit
