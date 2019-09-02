@@ -316,12 +316,7 @@ class Player():
 
 
     def chose_action(self, state):
-        # incorporate some randomness into the decision in order to make more observations of folding
-        eps = random.random()
-        if eps > 0.2:
-            self.action = np.squeeze(np.random.choice(3, 1, p=np.squeeze(self.agent.model.predict(state))))
-        else:
-            self.action = np.squeeze(np.random.choice(3))
+        self.action = np.squeeze(np.random.choice(3, 1, p=np.squeeze(self.agent.model.predict(state))))
        #print('I chose the action {}'.format(self.action))
         return self.action
 
@@ -384,15 +379,21 @@ class Player():
             self.last_actions.append(2)
            #print(f'Player {self.name}: I have bet the big blind of ${self.blind*2}!')
         elif self.agent:
+            # if the highest bet has reached the size of the stack, then call; always call the last raise
             if highest_bet == self.stack_original:
                 self.call(highest_bet)
+                print('I called because I do not have more money to spend!')
             else:
+                # incorporate some randomness into the decision in order to make more observations of folding
+                eps = random.random()
+                if eps > 0.2:
+                    action = self.chose_action(state)
+                else:
+                    action = np.squeeze(np.random.choice(3))
                 #if self.own_bet < highest_bet:
-                action = self.chose_action(state)
                 # check that it does not fold if player.own_bet == highest_bet
                 #else:
                 #    action = random.choice(['call', 'raise'])
-                #print(f'Player {self.name} chose action {action}.')
                 if action == 0:
                     self.fold()
                 #elif action == 'check':
@@ -401,8 +402,8 @@ class Player():
                     self.call(highest_bet)
                 else:
                     self.raise_bet(highest_bet, limit)
-                #print(f'''Player {self.name}: I have {self.actions[self.last_actions[-1]]}ed
-                #and am betting ${self.own_bet}!''')
+                print(f'''Player {self.name}: I have {self.actions[self.last_actions[-1]]}ed
+                and am betting ${self.own_bet}!''')
         else:
             self.fold()
 
@@ -553,7 +554,7 @@ class Game:
                 highest += 1
             if self.players[position].active == 0:
                 self.active_players -= 1
-            #print(f'highest is {highest} and active players are {self.active_players}')
+            print(f'{highest} players are betting the highest bet and {self.active_players} players are active!')
 
         if highest == self.active_players and self.active_players >= 1:
 
@@ -642,14 +643,14 @@ class Game:
 
         # run until the round is exhaustively played
         while not check_activity_round:
-            #print('entered while loop')
+            print('entered while loop')
 #            print(f'We have to go on playing with {self.active_players}')
             for position, player in enumerate(self.order):
-                #print('entered for loop')
+                print('entered for loop')
                 if self.players[player].own_bet <= self.highest_bet\
                 and self.players[player].active == 1:
-                   #print(f'The highest bet is {self.highest_bet}')
-                    if self.highest_bet == self.stack:
+                    print(f'The highest bet is {self.highest_bet} and the stack is {self.stack}')
+                    if self.highest_bet == self.stack and self.players[player].own_bet == self.stack:
                         self.players[player].do(self.highest_bet, self.limit, [[self.players[player].input_card_embedding], [self.players[player].input_state]])
                     else:
                         #self.write_data(player, position)
@@ -664,7 +665,7 @@ class Game:
                         # need to include some way to stop the game here
                         if self.check_end_of_game() == 0:
                             return 0
-                    #print(f'player {position+1} plays {self.players[position].own_bet}')
+                    print(f'player {position+1} plays {self.players[position].own_bet}')
             check_activity_round = self.check_activity_round()
 #            print(check_activity_round)
 #            print(not check_activity_round)
@@ -748,9 +749,17 @@ class Game:
         #print(self.output)
         self.output['reward'] = self.output['player']
         for i in range(self.output.shape[0]):
-            reward = self.players[int(self.output.at[i, 'reward'])].reward
+            player = self.players[int(self.output.at[i, 'reward'])].name - 1
+            reward = self.players[player].reward
+            print(f'Player {player+1} has made a reward in this game of {reward}!')
             bet_until_decision = self.output.at[i, 'bet'] * self.stack
-            self.output.at[i, 'reward'] = reward - bet_until_decision
+            print(f'Player bet until this round was {bet_until_decision}')
+            if reward >= 0:
+                self.output.at[i, 'reward'] = (reward - bet_until_decision) / self.stack
+                print(f'The reward of the last action was {self.output.at[i, 'reward']}')
+            else:
+                self.output.at[i, 'reward'] = (reward + bet_until_decision) / self.stack
+                print(f'The reward of the last action was {self.output.at[i, 'reward']}')
 
 
 

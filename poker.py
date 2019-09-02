@@ -379,6 +379,7 @@ class Player():
             self.last_actions.append(2)
            #print(f'Player {self.name}: I have bet the big blind of ${self.blind*2}!')
         elif self.agent:
+            # if the highest bet has reached the size of the stack
             if highest_bet == self.stack_original:
                 self.call(highest_bet)
             else:

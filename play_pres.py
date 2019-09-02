@@ -3,7 +3,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import numpy as np
-from poker_greedy import Game
+from poker_greedy_pres import Game
 from agent import Agent
 import time
 start_time = time.time()
@@ -13,22 +13,39 @@ start_time = time.time()
 
 PLAYERS = 6
 BLIND = 50
-STACK = 10000
+STACK = 1000
 LIMIT = 100
-GAMES = 20000
-DB_TABLE = 'v7_2019_08_20_08_52'
-AGENT = Agent()
-AGENT.load('v7_2019-08-19-23:30_20_epochs')
-print(f'The models weights before playing are: {AGENT.model.get_weights()}')
+GAMES = 10
+DB_TABLE = 'pres'
+
+agent1 = Agent()
+agent1.load('v7_2019-08-19-23:30_20_epochs')
+
+agent2 = Agent()
+agent2.load('v7_2019-08-19-23:30_20_epochs')
+
+agent3 = Agent()
+agent3.load('v6_2019-08-19-09:30_20_epochs')
+
+agent4 = Agent()
+agent4.load('v6_2019-08-19-09:30_20_epochs')
+
+# instantiate random agent
+agent5 = Agent()
+
+
+#print(f'The models weights before playing are: {AGENT.model.get_weights()}')
 
 
 #AGENT.build_model()
 # #print(AGENT.model.layers[1].get_weights())
 #
-g = Game(PLAYERS, BLIND, STACK, AGENT, DB_TABLE, LIMIT)
+g = Game(PLAYERS, BLIND, STACK, agents=[agent1, agent2, agent3, agent4, agent5], db_table=DB_TABLE, limit=LIMIT)
 #
 #
+
 for i in range(GAMES):
+    start = input('Press s to start: ')
     g.play_one_complete_game()
 #
 # print(f'{GAMES} games were played!')
