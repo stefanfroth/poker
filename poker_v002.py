@@ -10,12 +10,6 @@ import random
 import numpy as np
 import sqlalchemy as sqa
 import pandas as pd
-from tensorflow.keras import models, layers, metrics, optimizers
-from tensorflow.keras.models import model_from_json, Sequential
-from tensorflow.keras.layers import Input, Dense, Activation, Conv2D, MaxPooling2D, Flatten, Dropout
-from tensorflow.keras import backend as K
-from tensorflow import logging
-from agent import Agent
 
 
 # establish a connection to the database
@@ -756,10 +750,10 @@ class Game:
             print(f'Player bet until this round was {bet_until_decision}')
             if reward >= 0:
                 self.output.at[i, 'reward'] = (reward - bet_until_decision) / self.stack
-                print(f'The reward of the last action was {self.output.at[i, 'reward']}')
+                #print(f'The reward of the last action was {self.output.at[i, 'reward']}')
             else:
                 self.output.at[i, 'reward'] = (reward + bet_until_decision) / self.stack
-                print(f'The reward of the last action was {self.output.at[i, 'reward']}')
+                #print(f'The reward of the last action was {self.output.at[i, 'reward']}')
 
 
 
@@ -769,7 +763,6 @@ class Game:
         database "poker"
         '''
         self.output.to_sql(self.db_table, con=ENGINE, if_exists='append')
-
         #print('Wrote the data into the database!')
 
         # reset the output_frame
