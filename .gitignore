@@ -102,29 +102,28 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-<<<<<<< HEAD
 
 # .DS_Store
 .DS_Store
 
-# Prevent the background literature to be uploaded
+# background (literature)
 concept/*
 theory/*
+background/*
 
-# Prevent pictures to be uploaded
+# Presentation images
 PNG/*
 players/*
 
-# Prevent weights and losses from being uploaded
+# Model weights and losses
 weights/*
 loss/*
 
-# Amazon stuff
+# AWS
 ec2/*
-ec2*
 
-# Prevent old versions from being uploaded
-# versions/*
+# old versions
+versions/*
 
-# Prevent the todo file from being uploadeddurch die Konzeptionierung, Umsetzung und das Testen von Datenschnittstellen
+# todo file
 todo.txt
