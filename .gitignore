@@ -125,5 +125,8 @@ ec2/*
 # old versions
 versions/*
 
+# presentation
+final.ppt
+
 # todo file
 todo.txt
