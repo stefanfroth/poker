@@ -12,3 +12,9 @@ First step: The first step consisted in building  the structure of the poker gam
 
 1) Consists of classes Game, Player, Card and Evaluator
 2) At the beginning of the game all the (6) players have to be created.
+3) Next: Deck is created
+4) Next: cards are distributed
+5) First betting round
+
+
+) Fix the reward system

@@ -9,13 +9,8 @@ from tensorflow.keras import backend as K
 import tensorflow as tf
 import datetime
 
-host = 'poker.crvv64d8bwgs.eu-central-1.rds.amazonaws.com'
-port = '5432'
-user = 'postgres'
-database = 'poker'
-password = 'forthewin'
 
-DB = f'postgres://{user}:{password}@{host}:{port}/{database}'
+DB = 'postgres://localhost/poker'
 ENGINE = sqa.create_engine(DB)
 
 max_features = 53
