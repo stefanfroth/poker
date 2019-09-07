@@ -15,6 +15,13 @@ First step: The first step consisted in building  the structure of the poker gam
 3) Next: Deck is created
 4) Next: cards are distributed
 5) First betting round
+  6) Deal Flop
+  7) Second betting round
+    8) Deal turn
+    9) Third betting round (with big limit)
+      10) Deal river
+      11) Fourth betting round
+12) End the game
 
 
 ) Fix the reward system

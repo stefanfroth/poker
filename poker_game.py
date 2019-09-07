@@ -179,16 +179,14 @@ class Player():
                     action = self.chose_action(state)
                 else:
                     # Test: action is always between 1 - 3
-                    action = np.squeeze(np.random.choice(3)+1)
-                    print(f'The action is {action}')
-                #if self.own_bet < highest_bet:
-                # check that it does not fold if player.own_bet == highest_bet
-                #else:
-                #    action = random.choice(['call', 'raise'])
+                    # Make sure the agent does not fold when his bet is the highest.
+                    if self.own_bet < highest_bet:
+                        action = np.squeeze(np.random.choice(3)+1)
+                    else:
+                        action = np.squeeze(np.random.choice(2)+2)
+
                 if action == 1:
                     self.fold()
-                #elif action == 'check':
-                #    self.check()
                 elif action == 2:
                     self.call(highest_bet)
                 else:
@@ -366,6 +364,7 @@ class Game:
         # input variables for the model
         d['position'] = position/self.nr_of_players
         d['round'] = (self.round-1)/(4-1)
+        # Change: once we introduce playing with different sized stacks the next line will cause problems
         d['bet'] = self.players[player].own_bet/self.stack
         d['hand1'] = self.card_ordering[(self.players[player].hand[0].face, self.players[player].hand[0].suit)]/52
         d['hand2'] = self.card_ordering[(self.players[player].hand[1].face, self.players[player].hand[1].suit)]/52
@@ -504,20 +503,21 @@ class Game:
         # eliminate players from the game if they folded
         if action == 1:
             self.active_players -= 1
-            print(f'The number of active players is {self.active_players}')
 
         # increase call_counter if someone called and reset it if someone raised
         elif action == 2:
             self.call_counter += 1
-            print(f'The last {self.call_counter} players have called.')
         else:
             self.call_counter = 0
 
-        if self.call_counter == self.active_players - 1 or self.active_players == 1:
+        if self.active_players == 1:
+            return True
+
+        elif self.call_counter == self.active_players - 1:
             # advance to the next round
             self.round += 1
-
             return True
+
         else:
             return False
 
@@ -549,8 +549,8 @@ class Game:
 
                 if self.players[player].own_bet <= self.highest_bet\
                 and self.players[player].active == 1:
-                    if VERBOSE == 1:
-                        print(f'The highest bet is {self.highest_bet} and the stack is {self.stack}')
+                    #if VERBOSE == 1:
+                    #    print(f'The highest bet is {self.highest_bet} and the stack is {self.stack}')
 
                     # Change: has to be modelled correctly so that players can only play when they have the money
                     if self.highest_bet >= self.stack and self.players[player].own_bet >= self.stack:
@@ -558,8 +558,8 @@ class Game:
 
                         check_activity = self.eliminate_and_check_activity(action)
                         if check_activity:
-                            if VERBOSE == 1:
-                                print('The round is over because of calling out in iterative play.')
+                            #if VERBOSE == 1:
+                            #    print('The round is over because of calling out in iterative play.')
                             return True
 
                     else:
@@ -573,10 +573,12 @@ class Game:
                             self.highest_bet = self.players[player].own_bet
 
                         # Test: check_activity kann nur dann wahr sein, wenn die letzten alle gefoldet oder gecheckt haben.
+                        # Test: self.active_players are always between 1 - 6
+                        # Test: self.active_players are always decreasing
                         check_activity = self.eliminate_and_check_activity(action)
                         if check_activity:
-                            if VERBOSE == 1:
-                                print('The round is over because of calling out in iterative play.')
+                            #if VERBOSE == 1:
+                            #    print('The round is over because of calling out in iterative play.')
                             return True
 
 
@@ -597,14 +599,7 @@ class Game:
             if self.highest_bet == self.stack:
                 action = self.players[player].do(self.highest_bet, self.limit, [[self.players[player].input_card_embedding], [self.players[player].input_state]])
 
-                # eliminate players from the game if they folded
-                # Test: self.active_players are always between 1 - 6
-                # Test: self.active_players are always decreasing
-                check_activity = self.eliminate_and_check_activity(action)
-                if check_activity:
-                    #print('The round is over because of calling out.')
-                    return 0
-
+                self.eliminate_and_check_activity(action)
             # for jedem do muss die Information ausgelesen werden
             #self.write_data(player, position)
             else:
@@ -617,21 +612,12 @@ class Game:
                 if self.players[player].own_bet > self.highest_bet:
                     self.highest_bet = self.players[player].own_bet
 
-                check_activity = self.eliminate_and_check_activity(action)
-                if check_activity:
-                    #print('The round is over because of calling out.')
-                    return 0
-
-#        self.active_players = self.eliminate_players()
-
-        # check if the round is still active
-        #check_activity = self.eliminate_and_check_activity(action)
+                self.eliminate_and_check_activity(action)
 
         self.iterative_play()
 
         if VERBOSE == 1:
-            print(f'''round {self.round-1} is over and {self.active_players}
-            players are still in the game!''')
+            print(f'''round {self.round-1} is over and {self.active_players} players are still in the game!''')
 
 
     def deal_flop(self):
@@ -640,10 +626,10 @@ class Game:
         '''
         [self.community_cards.append(self.deck.pop()) for x in range(3)]
         [player.hand.append(Card(x)) for player in self.players for x in self.community_cards]
+
         if VERBOSE == 1:
             print(f'The flop is: {self.community_cards}')
 
-        if VERBOSE == 1:
             for player in self.players:
                 if player.active == 1:
                     print('Player {} has the hand {}'\
@@ -652,81 +638,98 @@ class Game:
 
     def action_post_flop(self):
         '''
-        The function action_post_flop calls the players to execute their
-        action after observing the additional community card(s)
+        The method action_post_flop calls the players to execute their
+        action after observing the additional community card(s).
         '''
         self.iterative_play()
 
         if VERBOSE == 1:
-            return print(f'''Round {self.round} is over and {self.active_players}
-            players are still in the game''')
+            return print(f'''Round {self.round} is over and {self.active_players} players are still in the game''')
 
 
     def deal_turn(self):
         '''
-        The function deal_flop_2 deals out the fourth card of the flop
+        The method deal_turn deals out the fourth community card.
         '''
         self.community_cards.append(self.deck.pop())
         [player.hand.append(Card(self.community_cards[-1])) for player in self.players]
+
         if VERBOSE == 1:
             print(f'The community cards after the turn are: {self.community_cards}')
+
+            for player in self.players:
+                if player.active == 1:
+                    print('Player {} has the hand {}'\
+                    .format(player.name, [(card.face, card.suit) for card in player.hand]))
 
 
     def deal_river(self):
         '''
-        The function deal_flop_3 deals out the fifth card of the flop
+        The method deal_river deals out the fifth community card.
         '''
         self.community_cards.append(self.deck.pop())
         [player.hand.append(Card(self.community_cards[-1])) for player in self.players]
+
         if VERBOSE == 1:
             print(f'The community cards after the river are: {self.community_cards}')
+
+            for player in self.players:
+                if player.active == 1:
+                    print('Player {} has the hand {}'\
+                    .format(player.name, [(card.face, card.suit) for card in player.hand]))
 
 
     def determine_pot_size(self):
         '''
-        The function determine_pot_size calculates at each point in time how
-        much money is in the pot.
+        The method determine_pot_size calculates how much money is in the pot.
         '''
         pot = 0
         for p in self.players:
             pot += p.own_bet
 
-        return pot
+        self.pot = pot
 
 
     def pass_to_next_game(self):
         '''
-        The function pass_to_next_game finishes of one game of poker and
-        starts the new one.
+        The method pass_to_next_game finishes of one game of poker and
+        passes on to the new one.
         '''
 
         # determine who won the game
         if self.active_players > 1:
             best_hands = []
+
             for player in self.players:
                 if player.active == 1:
                     best_hands.append(player.evaluate_hand())
+
             winning_hand = sorted(best_hands, key=lambda x: (x[2], x[3]),\
                 reverse=False)[0]
-           #print(f'''Player {winning_hand[5]} wins with a {winning_hand[1]}.
-            #His hand is {winning_hand[4]}''')
+
+            if VERBOSE == 1:
+                print(f'''Player {winning_hand[5]} wins with a {winning_hand[1]}.\
+                His hand is {winning_hand[4]}''')
+
             self.winner = winning_hand[5]
+
         else:
             for player in self.players:
                 if player.active == 1:
                     self.winner = player.name
-                    #print(f'''Player {self.winner} wins because everyone else dropped
-                    #out.''')
+
+                    if VERBOSE == 1:
+                        print(f'''Player {self.winner} wins because everyone else dropped out.''')
 
         # distribute the pot
-        self.pot = self.determine_pot_size()
-        #print(f'The winner is {self.winner}')
+        self.determine_pot_size()
         self.players[self.winner-1].stack += self.pot
 
+        # update the stack and reset the own_bet
         for player in self.players:
             player.stack -= player.own_bet
-            #print(f"Player {player.name}'s stack after game {self.game_count} \
-            #is {player.stack}.")
+            if VERBOSE == 1:
+                print(f"""Player {player.name}'s stack after game {self.game_count} is {player.stack}.""")
             player.reward = player.stack - player.stack_old
             # update old stack for the next round
             player.stack_old = player.stack
@@ -738,13 +741,16 @@ class Game:
         # increase game count
         self.game_count += 1
 
-        # reset rounds
+        # reset limit and round
+        if self.round > 2:
+            self.limit = self.limit/2
         self.round = 1
 
         # reset all players to be active and delete their last actions
         for player in self.players:
             player.active = 1
             player.last_actions = []
+        self.active_players = self.nr_of_players
 
         # reset highest_bet
         self.highest_bet = 0
@@ -752,33 +758,36 @@ class Game:
         # reset the call_counter
         self.call_counter = 0
 
-        # reset all players to be active
-        self.active_players = self.nr_of_players
-
-        # reset the flop
+        # reset the community cards
         self.community_cards = []
 
 
     def add_reward(self):
         '''
-        The function add_reward adds the reward of each player to the output
-        data frame that is written to the database.
+        The method add_reward adds the reward of each player for each action
+        to the output data frame that is written to the database.
         '''
         #print(self.output)
         self.output['reward'] = self.output['player']
+        self.output['reward_of_action'] = ''
         for i in range(self.output.shape[0]):
             player = self.players[int(self.output.at[i, 'reward'])].name - 1
             reward = self.players[player].reward
-            print(f'Player {player+1} has made a reward in this game of {reward}!')
-            bet_until_decision = self.output.at[i, 'bet'] * self.stack
-            print(f'Player bet until this round was {bet_until_decision}')
-            if reward >= 0:
-                self.output.at[i, 'reward'] = (reward - bet_until_decision) / self.stack
-                #print(f'The reward of the last action was {self.output.at[i, 'reward']}')
-            else:
-                self.output.at[i, 'reward'] = (reward + bet_until_decision) / self.stack
-                #print(f'The reward of the last action was {self.output.at[i, 'reward']}')
+            self.output.at[i, 'reward'] = reward
+            #if VERBOSE == 1:
+            #    print(f'Player {player+1} has made a reward in this game of {reward}!')
 
+            bet_until_decision = self.output.at[i, 'bet'] * self.stack
+            #if VERBOSE == 1:
+            #    print(f'Player bet until this round was {bet_until_decision}')
+            if reward >= 0:
+                # Change: once players with different stack sizes play, this has to be updated because the scaling will not work
+                self.output.at[i, 'reward_of_action'] = (reward-bet_until_decision)/(self.stack*(self.nr_of_players-1))
+            else:
+                # Note: negative rewards are not scaled as much as positive rewards
+                self.output.at[i, 'reward_of_action'] = (reward+bet_until_decision)/self.stack
+            #if VERBOSE == 1:
+            #    print(f"The reward of the last action was {self.output.at[i, 'reward_of_action']}")
 
 
     def write_data(self):
@@ -787,7 +796,6 @@ class Game:
         database "poker"
         '''
         self.output.to_sql(self.db_table, con=ENGINE, if_exists='append')
-        #print('Wrote the data into the database!')
 
         # reset the output_frame
         self.output = pd.DataFrame()
@@ -808,6 +816,8 @@ class Game:
             self.action_post_flop()
             self.call_counter = -1
             if self.active_players > 1:
+                # increase the limit for the betting rounds following turn and river
+                self.limit = self.limit * 2
                 self.deal_turn()
                 self.action_post_flop()
                 self.call_counter = -1
@@ -819,8 +829,6 @@ class Game:
         self.write_data()
 
     def __repr__(self):
-        return '''The game is in round {} and in game {}. The highest bet is {}.\
-        The position of the small blind is {}. \
-        The total money in the pot will yet have to be created.\
-        \n The players who are still in the game will have to be created.
+        return '''The game is in round {} and in game {}. The highest bet is {}.
+        The position of the small blind is {}.
         '''.format(self.round, self.game_count, self.highest_bet, self.position_small+1)
