@@ -10,6 +10,7 @@ import random
 import numpy as np
 import sqlalchemy as sqa
 import pandas as pd
+import time
 from hand_evaluator import Evaluator
 
 
@@ -23,7 +24,10 @@ ENGINE = sqa.create_engine(DB)
 VERBOSE = 1
 
 # PRESENTATION indicates whether we are going to use the fancy suits or letters
-PRESENTATION = 0
+PRESENTATION = 1
+
+# Allow for the possibility of human players.
+HUMANS = 2
 
 
 
@@ -45,17 +49,21 @@ class Player():
     '''
 
     def __init__(self, stack, blind, name, agent):
-        self.hand = []
+        # stack_original will always save the original stack of the player
         self.stack_original = stack
+        # stack will save the current stack of the player
         self.stack = stack
+        # stack_old is a variable in order to calculate the reward at the end of each game.
         self.stack_old = stack
-        self.reward = 0
         self.blind = blind
         self.name = name
+        self.agent = agent
+
+        self.hand = []
         self.own_bet = 0
         self.active = 1
         self.last_actions = []
-        self.best_hand = []
+        #self.best_hand = []
         self.handrankorder = {'straight-flush': 1, 'four-of-a-kind': 2, 'full-house': 3,
                               'flush': 4, 'straight': 5, 'three-of-a-kind': 6,
                               'two-pair': 7, 'one-pair': 8, 'high-card': 9}
@@ -63,18 +71,22 @@ class Player():
                               '8': 7, '7': 8, '6': 9, '5': 10,
                               '4': 11, '3': 12, '2': 13}
         self.actions = {1: 'fold', 2: 'call', 3: 'raise'}
+
+        # variables for the Deep Reinforcement Learning.
         self.max_features = 53
         self.vector_size = 4
         self.max_len = 7
         self.input_card_embedding = np.zeros((1,7))
         self.input_state = np.zeros((1,18))
-        self.agent = agent
 
-#        '''
-#        :param possible_initial_states: All the states that are possible initial states for the simulation.
-#        :param possible_states: All the states that are possible states during the simulation.
-#        :param transition_probabilities: Probabilitie Matrix for the transition probabilities between states.
-#        '''
+        self.reward = 0
+
+        '''
+        :param stack: The initial stack of the player.
+        :param blind: The small blind of the game.
+        :param name: The name of the player.
+        :param agent: The agent behind the player (Neural Network).
+        '''
 
 
     def create_embedding_input(self, input):
@@ -82,7 +94,6 @@ class Player():
         The function create_embedding_input creates the input for the embedding of the card vectors
         '''
         # I will have to refactor the code here because this code will create matrices for the action functions but I only want an array
-        # However, for the model improvement I will want to have all of them
         cards = input[['hand1', 'hand2', 'community1', 'community2', 'community3', 'community4', 'community5']].to_numpy()
 
         self.input_card_embedding = np.squeeze(cards)
@@ -102,15 +113,15 @@ class Player():
 
     def chose_action(self, state):
         self.action = np.squeeze(np.random.choice(3, 1, p=np.squeeze(self.agent.model.predict(state)))+1)
-       #print('I chose the action {}'.format(self.action))
+
         return self.action
 
 
-    def train_model(self):
-        '''
-        The method train_model trains the model after a set amount of games of
-        poker in order to refine the tactic of the poker playing agent.
-        '''
+    # def train_model(self):
+    #     '''
+    #     The method train_model trains the model after a set amount of games of
+    #     poker in order to refine the tactic of the poker playing agent.
+    #     '''
 
 
     def fold(self):
@@ -119,17 +130,8 @@ class Player():
         '''
         self.last_actions.append(1)
         self.active = 0
-        #print(f'Player {self.name}: My cards are sh..! I fold!')
-
-
-#    def check(self):
-        # '''
-        # The player checks.
-        # Quasi deprecated because the machine does not care about calling or checking.
-        # '''
-        # self.last_actions.append(999)
-        # #print(f'Player {self.name}: I am curious what is going to happen.\
-        #     I am checking!')
+        if PRESENTATION == 1:
+            print(f'Player {self.name}: My cards are sh..! I fold!')
 
 
     def call(self, highest_bet):
@@ -138,7 +140,8 @@ class Player():
         '''
         self.last_actions.append(2)
         self.own_bet = highest_bet
-       #print(f'Player {self.name}: I think I can win this game. I am calling!')
+        if PRESENTATION == 1:
+            print(f'Player {self.name}: I think I can win this game. I am calling!')
 
 
     def raise_bet(self, highest_bet, limit):
@@ -147,6 +150,8 @@ class Player():
         '''
         self.last_actions.append(3)
         self.own_bet = highest_bet + limit
+        #if PRESENTATION == 1:
+        #    print(f'Player {self.name}: I am raising!')
 
 
     def do(self, highest_bet, limit, state, blind=None):
@@ -154,8 +159,7 @@ class Player():
         The function do determines the action of the player when it is his turn
         to bet.
         '''
-        #print(f'My own bet is {self.own_bet} and the original stack size is {self.stack_original}')
-        if blind == 'small': # was, wenn er nicht mehr genug Geld für den small blind hat?
+        if blind == 'small':
             self.own_bet = self.blind
             self.last_actions.append(3)
             if VERBOSE == 1:
@@ -167,13 +171,13 @@ class Player():
             if VERBOSE == 1:
                 print(f'Player {self.name}: I have bet the big blind of ${self.blind*2}!')
 
-        elif self.agent:
-            # if the highest bet has reached the size of the stack, then call; always call the last raise
+        elif self.agent != 'human':
+            # Change: work out what happens if player runs out of money.
             if highest_bet == self.stack_original:
                 self.call(highest_bet)
                 print('I called because I do not have more money to spend!')
             else:
-                # incorporate some randomness into the decision in order to make more observations of folding
+                # incorporate some randomness into the decision in order to ensure some exploration.
                 eps = random.random()
                 if eps > 0.2:
                     action = self.chose_action(state)
@@ -193,7 +197,20 @@ class Player():
                     self.raise_bet(highest_bet, limit)
                 print(f'''Player {self.name}: I have {self.actions[self.last_actions[-1]]}ed and am betting ${self.own_bet}!''')
         else:
-            self.fold()
+            # Change: make sure that only 1, 2, 3 can be entered.
+            txt = input("Please chose your action (fold (1), check or call(2), raise(3)): ")
+            action = int(txt)
+            if action == 1:
+                self.fold()
+            elif action == 2:
+                self.call(highest_bet)
+            elif action == 3:
+                self.raise_bet(highest_bet, limit)
+                print(f'''Player {self.name}: I {self.actions[self.last_actions[-1]]}ed and am betting ${self.own_bet}!''')
+
+        # introduce some latency for the human eye to follow
+        if PRESENTATION == 1:
+            time.sleep(1)
 
         return self.last_actions[-1]
 
@@ -203,10 +220,9 @@ class Player():
         The function evaluate_hand evaluates the highest ranked hand out of
         all the possible 5 card combinations of the player.
         '''
+        # Test: royal flush always wins
+        # Test: worst hand always looses
         possible_hands = list(itertools.combinations(self.hand, 5))
-#        print([(possible_hands[i][j].face, possible_hands[i][j].suit)\
-#               for i in range(len(possible_hands))\
-#               for j in range(len(possible_hands[i])) ])
         hand_values_rank = []
         for i, hand in enumerate(possible_hands):
             #print([(hand[i].face, hand[i].suit) for i in range(len(hand))])
@@ -217,14 +233,11 @@ class Player():
                 , highest_card, self.name))
 
         ranked = sorted(hand_values_rank, key=lambda x: (x[2], x[3]), reverse=False)
-       #print([(card.face, card.suit) for card in possible_hands[ranked[0][0]]])
-       #print(f'The best hand of player {self.name} is a {ranked[0][1]}')
+        if VERBOSE == 1:
+            print(f'The best hand of player {self.name} is a {ranked[0][1]}')
+            print([(card.face, card.suit) for card in possible_hands[ranked[0][0]]])
 
-        #if ranked[0][3][0] in [ranked[i][3][0] for i in range(len(hand_values_rank))]:
-        #    print('This outcomes exists more than once')
-
-
-        self.best_hand = 0#possible_hands[np.argmax(hand_values)]
+        #self.best_hand = 0#possible_hands[np.argmax(hand_values)]
         #print(hand_values)
 
         return ranked[0]
@@ -247,7 +260,7 @@ class Game:
         # initialize the players, their order and positions
         self.players = []
 
-        for p in range(self.nr_of_players):
+        for p in range(self.nr_of_players-HUMANS):
             if type(self.agent) == list:
                 # Test: assert that the list of agents is not longer than the amount of players.
                 # Test: assert that all agents in the list are present in the game
@@ -259,6 +272,11 @@ class Game:
             if VERBOSE == 1:
                 # Change: introduce self.players.agent.name
                 print(f'successfully created player {p+1}. He is a {self.players[p].agent}.')
+
+        for p in range(HUMANS):
+            pos = HUMANS-p-1
+            self.players.append(Player(self.stack, self.blind, self.nr_of_players-pos, 'human'))
+
 
         self.player_names = list(range(nr_of_players))
         self.order = list(range(nr_of_players))
@@ -392,7 +410,6 @@ class Game:
             d['community3'] = self.card_ordering[self.community_cards[2]]/52
             d['community4'] = self.card_ordering[self.community_cards[3]]/52
             d['community5'] = self.card_ordering[self.community_cards[4]]/52
-        #[self.community_cards[i] for i in range(len(self.community_cards))]
 
         count = 0
         for p in self.order:
@@ -423,9 +440,7 @@ class Game:
 
         # output variables for the model
         d['action'] = ''
-        #d['reward'] = ''
 
-        #print(f'The row {d} will be added to the output frame')
         # Test: All columns are filled
         # Test: Are there values > 1 or < 0
         self.output = self.output.append(d, ignore_index=True)
@@ -442,55 +457,6 @@ class Game:
         '''
         # save the action of the agent after he made his decision
         self.output.at[self.output.shape[0]-1,'action'] = self.players[player].last_actions[-1]
-
-
-    # def eliminate_players(self):
-    #     '''
-    #     The method eliminate_players eliminates, after each game,
-    #     the players that did not call or raise.
-    #     '''
-    #     eliminated_players = 0
-    #     for player in self.players:
-    #         if player.active == 0:
-    #             eliminated_players += 1
-    #
-    #     active_players = self.active_players - eliminated_players
-    #
-    #     return active_players
-
-
-    # def check_called_out(self):
-    #     '''
-    #     The method check_called_out checks whether the round is over because all
-    #     active players have called.
-    #     '''
-    #     if self.call_counter == self.active_players - 1:
-    #         return
-
-
-    # def check_activity_round(self):
-    #     '''
-    #     The method check_activity_round checks whether the betting in the
-    #     current round is still active.
-    #     '''
-    #     highest = 0
-    #     for position in self.order:
-    #         if self.players[position].own_bet == self.highest_bet:
-    #             highest += 1
-    #
-    #     if VERBOSE == 1:
-    #         print(f'{highest} players are betting the highest bet and {self.active_players} players are active!')
-    #
-    #     if highest == self.active_players and self.active_players >= 1:
-    #
-    #         # increase the round by one
-    #         self.round += 1
-    #
-    #         return True
-    #
-    #     else:
-    #
-    #         return False
 
 
     def eliminate_and_check_activity(self, action):
@@ -520,18 +486,6 @@ class Game:
 
         else:
             return False
-
-
-    # def check_end_of_game(self):
-    #     '''
-    #     The method check_end_of_game checks if the game has ended.
-    #     '''
-    #     if self.active_players == 1:
-    #         # Test: No more than one active player at this point
-    #         for player in self.players:
-    #             if player.active == 1:
-    #                 self.winner = player
-    #                 return 0
 
 
     def iterative_play(self):
@@ -619,6 +573,10 @@ class Game:
         if VERBOSE == 1:
             print(f'''round {self.round-1} is over and {self.active_players} players are still in the game!''')
 
+        # introduce some latency for the human eye to follow
+        if PRESENTATION == 1:
+            time.sleep(1)
+
 
     def deal_flop(self):
         '''
@@ -635,6 +593,10 @@ class Game:
                     print('Player {} has the hand {}'\
                     .format(player.name, [(card.face, card.suit) for card in player.hand]))
 
+        # introduce some latency for the human eye to follow
+        if PRESENTATION == 1:
+            time.sleep(1)
+
 
     def action_post_flop(self):
         '''
@@ -645,6 +607,10 @@ class Game:
 
         if VERBOSE == 1:
             return print(f'''Round {self.round} is over and {self.active_players} players are still in the game''')
+
+        # introduce some latency for the human eye to follow
+        if PRESENTATION == 1:
+            time.sleep(1)
 
 
     def deal_turn(self):
@@ -662,6 +628,10 @@ class Game:
                     print('Player {} has the hand {}'\
                     .format(player.name, [(card.face, card.suit) for card in player.hand]))
 
+        # introduce some latency for the human eye to follow
+        if PRESENTATION == 1:
+            time.sleep(1)
+
 
     def deal_river(self):
         '''
@@ -677,6 +647,10 @@ class Game:
                 if player.active == 1:
                     print('Player {} has the hand {}'\
                     .format(player.name, [(card.face, card.suit) for card in player.hand]))
+
+        # introduce some latency for the human eye to follow
+        if PRESENTATION == 1:
+            time.sleep(1)
 
 
     def determine_pot_size(self):
@@ -827,6 +801,10 @@ class Game:
         self.pass_to_next_game()
         self.add_reward()
         self.write_data()
+
+        # introduce some latency for the human eye to follow
+        if PRESENTATION == 1:
+            time.sleep(5)
 
     def __repr__(self):
         return '''The game is in round {} and in game {}. The highest bet is {}.
