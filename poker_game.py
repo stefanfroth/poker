@@ -24,10 +24,13 @@ ENGINE = sqa.create_engine(DB)
 VERBOSE = 1
 
 # PRESENTATION indicates whether we are going to use the fancy suits or letters
-PRESENTATION = 1
+PRESENTATION = 0
 
 # Allow for the possibility of human players.
-HUMANS = 2
+if PRESENTATION == 1:
+    HUMANS = 2
+else:
+    HUMANS = 0
 
 
 
@@ -73,9 +76,6 @@ class Player():
         self.actions = {1: 'fold', 2: 'call', 3: 'raise'}
 
         # variables for the Deep Reinforcement Learning.
-        self.max_features = 53
-        self.vector_size = 4
-        self.max_len = 7
         self.input_card_embedding = np.zeros((1,7))
         self.input_state = np.zeros((1,18))
 
@@ -752,16 +752,16 @@ class Game:
             #    print(f'Player {player+1} has made a reward in this game of {reward}!')
 
             bet_until_decision = self.output.at[i, 'bet'] * self.stack
-            #if VERBOSE == 1:
-            #    print(f'Player bet until this round was {bet_until_decision}')
+            if VERBOSE == 1:
+                print(f'Player bet until this round was {bet_until_decision}')
             if reward >= 0:
                 # Change: once players with different stack sizes play, this has to be updated because the scaling will not work
-                self.output.at[i, 'reward_of_action'] = (reward-bet_until_decision)/(self.stack*(self.nr_of_players-1))
+                self.output.at[i, 'reward_of_action'] = (reward-bet_until_decision+self.stack)/(self.stack*(self.nr_of_players-1)+self.stack)
             else:
                 # Note: negative rewards are not scaled as much as positive rewards
-                self.output.at[i, 'reward_of_action'] = (reward+bet_until_decision)/self.stack
-            #if VERBOSE == 1:
-            #    print(f"The reward of the last action was {self.output.at[i, 'reward_of_action']}")
+                self.output.at[i, 'reward_of_action'] = (reward+bet_until_decision+self.stack)/(self.stack*(self.nr_of_players-1)+self.stack)
+            if VERBOSE == 1:
+                print(f"The reward of the last action was {self.output.at[i, 'reward_of_action']}")
 
 
     def write_data(self):

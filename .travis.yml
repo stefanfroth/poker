@@ -8,4 +8,5 @@ install:
 # command to run tests
 script:
   - pytest
-#  - pylint *.py
+  # the ignorde-modules=tensorflow is due to a bug using pyling in combination with tensorflow > 1.13
+  - pylint *.py --ignored-modules=tensorflow.keras
