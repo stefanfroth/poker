@@ -1,45 +1,57 @@
+'''
+The module train trains the model based on the weights of a chosen version.
+'''
+
+import time
 import warnings
+import datetime
+import numpy as np
+import pandas as pd
+from agent import Agent
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import numpy as np
-import pandas as pd
-#import tensorflow as tf
-import datetime
-from agent_v002 import Agent
-import time
+# Chose whether print statements are to be shown while running the code or not.
+VERBOSE = 1
+# Chose the version that shall be trained.
+WEIGHTS = '2019-08-18-16:51_greedy'
+# Indicate on which data it is to be trained.
+DB_TABLE = 'sunk'
+VERSION = 'v5'
 
-#log_dir="logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-#tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+START_TIME = time.time()
 
-start_time = time.time()
+# instantiate the Agent
 AGENT = Agent()
 
-#print(f'The models weights before loading are: {AGENT.model.get_weights()}')
+# Load the weights of the version to be trained.
+AGENT.load(WEIGHTS)
+if VERBOSE == 1:
+    print(f'The models weights after loading are: {AGENT.model.get_weights()}')
 
-AGENT.load('2019-08-18-16:51_greedy')
-#print(f'The models weights after loading are: {AGENT.model.get_weights()}')
-AGENT.read_data('sunk')
-#print('Read the data successfully')
+AGENT.read_data(DB_TABLE)
+
+# Create model inputs
 AGENT.create_embedding_input()
-#print(f'Created embedding input {AGENT.input_card_embedding}')
 AGENT.create_state_input()
-#print(f'Created state input {AGENT.input_state}')
-#print(f'The actions are {AGENT.input['action']}')
-#print(f'The rewards are {AGENT.input['reward']}')
-#print(f'The model operations are: {AGENT.model.get_operations()}')
-losses = []
-#print(f'The optimizer is: {AGENT.adam}')
+
+# Create a list to save the losses of the epochs.
+LOSSES = []
+
+# Train the model and save the loss
 for i in range(20):
-    losses.append(AGENT.train_model(AGENT.input_card_embedding, AGENT.input_state, np.array(AGENT.input['action']), np.array(AGENT.input['reward'])))
-#print(f'The models weights after training are: {AGENT.model.get_weights()}')
-#time.sleep(60)
-AGENT.save()
-loss = pd.DataFrame(losses)
+    LOSSES.append(AGENT.train_model(AGENT.input_card_embedding,
+                                    AGENT.input_state,
+                                    np.array(AGENT.input['action']),
+                                    np.array(AGENT.input['reward'])))
+
+if VERBOSE == 1:
+    print(f'The models weights after training are: {AGENT.model.get_weights()}')
+
+AGENT.save(VERSION)
+LOSS = pd.DataFrame(LOSSES)
 #print(f'The loss is {loss}')
-loss.to_csv(f'loss_{datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")}.csv')
+LOSS.to_csv(f'loss_{datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")}.csv')
 
-#print('''We have retrained the network.
-#This took {} to run'''.format(time.time() - start_time))
-
-#tensorboard --logdir logs/fit
+if VERBOSE == 1:
+    print('''We have retrained the network. This took {} to run'''.format(time.time() - START_TIME))
