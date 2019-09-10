@@ -1,8 +1,8 @@
 '''
-The module self_play_between_versions lets two different versions of the poker
-bot play against each other, creates a png displaying the rewards of each version
-in the first 50 games and tests if the reward of the newer version is significantly
-different from zero.
+The module self_play_analysis creates a png showing the rewards of each version
+of the poker bot playing against each other for the first 50 games. Furthermore,
+it tests if the rewards of the newer version bot are statistically significant from
+zero.
 '''
 
 import sqlalchemy as sqa
@@ -11,46 +11,14 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 
-from poker_game import Game
-from agent import Agent
 
-# db connection
-DB = f'postgres://localhost/poker'
+DB = 'postgres://localhost/poker'
 ENGINE = sqa.create_engine(DB)
 
-# Versions and db table
 OLD_VERSION = 'v7'
 NEW_VERSION = 'v8'
 DB_TABLE = 'v7vv8_2019_08_20_14:19'
 
-# Rules of the game
-PLAYERS = 6
-BLIND = 50
-STACK = 10000
-LIMIT = 100
-GAMES = 1000
-
-# load the agents
-AGENT1 = Agent()
-AGENT1.load('v7_2019-08-19-23:30_20_epochs')
-
-AGENT2 = Agent()
-AGENT2.load('v8_2019-08-20-14:15_20_epochs')
-
-AGENTS = [AGENT1, AGENT2]
-
-# instantiate and play the game
-G = Game(PLAYERS, BLIND, STACK, agents=[AGENT1, AGENT2], db_table=DB_TABLE, limit=LIMIT)
-print('Let the games begin!')
-
-for i in range(GAMES):
-    G.play_one_complete_game()
-    print(f'Game {i+1} has been played!')
-
-print(f'Yeahy, agent1 and agent2 played {GAMES} games of poker against each other.')
-
-
-# analyse the result of the self play between the different versions.
 # Red in the database table
 DF = pd.read_sql(f'{DB_TABLE}', con=ENGINE)
 DF['game'] = DF.game.astype(int)
