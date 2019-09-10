@@ -108,12 +108,7 @@ class Agent:
 
         :param name of the document the training data is saved in.
         '''
-        self.input = pd.read_csv(f'{document_name}.csv')
-        #print(f'The data read in is {self.input}')
-
-        # for i in tf.get_default_graph().get_operations():
-        #     if i.name == 'action_onehot' or i.name == 'reward':
-        #         print(i.name + 'read')
+        self.input = pd.read_sql(table_name, con=ENGINE)
 
 
     def create_embedding_input(self):
@@ -129,11 +124,6 @@ class Agent:
                                                 'community4', 'community5']].to_numpy()
 
 #        self.input_card_embedding = np.squeeze(cards)
-        #print('The card embedding input is {}'.format(self.input_card_embedding))
-
-        # for i in tf.get_default_graph().get_operations():
-        #     if i.name == 'action_onehot' or i.name == 'reward':
-        #         print(i.name + 'embedding')
 
 
     def create_state_input(self):
@@ -152,10 +142,6 @@ class Agent:
 
 #        self.input_state = np.squeeze(state)
 
-        # for i in tf.get_default_graph().get_operations():
-        #     if i.name == 'action_onehot' or i.name == 'reward':
-        #         print(i.name + 'state')
-
 
     def train_model(self, cards, states, actions, rewards):
         '''
@@ -166,13 +152,9 @@ class Agent:
         :param actions: The actions taken by the agents.
         :param rewards: The rewards received by the agents.
         '''
-        for i in tf.get_default_graph().get_operations():
-            if i.name == 'action_onehot' or i.name == 'reward':
-                print(i.name)
-
-#        print(f'The operations are: {tf.get_default_graph().get_operations()}')
-        #b = np.zeros((actions.shape[0], 3))
-        #b[np.arange(actions.shape[0]), actions] = 1
+#        for i in tf.get_default_graph().get_operations():
+#            if i.name == 'action_onehot' or i.name == 'reward':
+#                print(i.name)
 
         action_onehot = utils.to_categorical(actions-1, num_classes=3)
         rewards = np.float32(rewards)
@@ -191,15 +173,9 @@ class Agent:
         #the actions are {action_onehot} and the rewards are {rewards}.
         #We are going to train the model using these inputs.''')
         loss = self.train_fn(inputs=[cards, states, action_onehot, rewards])
-        #log_loss = np.log(loss[1])
-        #log_loss
+
         return loss[0]
 
-
-    # def train(self, in, out, epochs):
-    #     self.model.fit(in, out, epochs=epochs, batch_size=50)
-    #     #score = self.model.evaluate(in, out, batch_size=50)
-    #     print("The model was trained.")
 
     def save(self, document_name):
         '''
@@ -210,10 +186,9 @@ class Agent:
         '''
         date_string = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
         with open(f"weights_{document_name}_{date_string}.json", "w") as json_file:
-        #with open('./weights/weights_test2.json', 'w') as json_file:
             json_file.write(self.model.to_json())
-        #self.model.save_weights('./weights/weights_test2.h5')
         self.model.save_weights(f'weights_{document_name}_{date_string}.h5')
+
 
     def load(self, date_string):
         '''
@@ -221,22 +196,13 @@ class Agent:
 
         :param date_string: Timestampt of when the weights were created.
         '''
-        # for i in tf.get_default_graph().get_operations():
-        #     if i.name == 'action_onehot' or i.name == 'reward':
-        #         print(i.name + 'load_1')
-        #K.clear_session()
-        #self.build_model()
         with open(f'weights_{date_string}.json', 'r') as file:
             json = file.read()
         self.model = model_from_json(json)
         self.model.load_weights(f'weights_{date_string}.h5')
-        # 'self.adam' als string nimmt allerdings die Standardeinstellungen von self.adam
-        #self.model.compile(optimizer='adam', loss='categorical_crossentropy')
-        #self.build_model()
 
-        #    action_prob_ph = self.model.output
-        action_prob_ph = self.model.output#K.sum(self.model.output)
-        #print(f'The probabilities for the three actions are {action_prob_ph}')
+        # Optimization instructions have to be given again.
+        action_prob_ph = self.model.output
         action_onehot_ph = K.placeholder(shape=(None, 3),
                                          name="action_onehot")
         reward_ph = K.placeholder(shape=(None,),
@@ -260,7 +226,3 @@ class Agent:
                                    updates=updates)
 
         self.model.compile(optimizer=self.adam, loss='categorical_crossentropy')
-
-        # for i in tf.get_default_graph().get_operations():
-        #     if i.name == 'action_onehot' or i.name == 'reward':
-        #         print(i.name + 'load_2')
