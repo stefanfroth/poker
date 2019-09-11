@@ -48,6 +48,17 @@ class Agent:
         '''
         The function build_model sets up the basic structure for the model
         that is going to be trained.
+
+        Replaces `model.fit(X, y)` because we use the output of model
+        and use it for training.
+        For example, we need action placeholder
+        called `action_one_hot` that stores, which action we took at state `s`.
+        Hence, we can update the same action.
+        This function will create
+        `self.train_fn([state, action_one_hot, discount_reward])`
+        which would train the model.
+
+        https://gist.github.com/kkweon/c8d1caabaf7b43317bc8825c226045d2
         '''
 
         # Card embeddings
