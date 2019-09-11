@@ -9,4 +9,10 @@ install:
 script:
   - pytest
   # the ignorde-modules=tensorflow is due to a bug using pyling in combination with tensorflow > 1.13
-  - pylint agent.py #--ignored-modules=tensorflow.keras
+  - pylint agent.py --ignored-modules=tensorflow.keras
+  - pylint poker_game.py
+  - pylint play.py
+  - pylint train.py
+  - pylint self_play_analysis.py
+  - pylint self_play_between_versions.py
+  - pylint test_file.py

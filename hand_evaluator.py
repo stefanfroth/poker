@@ -29,11 +29,11 @@ class Evaluator:
         else:
             self.suit = ['h', 'd', 'c', 's']
 
-    '''
-    :param hand: The hand of cards that is to be evaluated.
-    :param ation: Binary variable indicating whether the fancy suits should
-    be displayed (1) or the letters (0).
-    '''
+        '''
+        :param hand: The hand of cards that is to be evaluated.
+        :param action: Binary variable indicating whether the fancy suits should
+        be displayed (1) or the letters (0).
+        '''
 
 
     def straightflush(self, hand):
@@ -41,16 +41,17 @@ class Evaluator:
         The function straightflush determines whether the hand of the player
         is a straight flush.
         '''
-        f, fs = ((self.lowace, self.lowaces) if any(card.face == '2' for card in hand)
-                 else (self.face, self.faces))
-        ordered = sorted(hand, key=lambda card: (f.index(card.face), card.suit))
+        face, faces = ((self.lowace, self.lowaces) if any(card.face == '2' for card in hand)
+                       else (self.face, self.faces))
+        ordered = sorted(hand, key=lambda card: (face.index(card.face), card.suit))
         first, rest = ordered[0], ordered[1:]
         if (all(card.suit == first.suit for card in rest) and
-             ' '.join(card.face for card in ordered) in fs):
+                ' '.join(card.face for card in ordered) in faces):
             return 'straight-flush', ordered[-1].face
         return False
 
 
+    # pylint: disable=no-self-use
     def fourofakind(self, hand):
         '''
         The function fourofakind determines whether the player
@@ -60,14 +61,13 @@ class Evaluator:
         allftypes = set(allfaces)
         if len(allftypes) != 2:
             return False
-        for f in allftypes:
-            if allfaces.count(f) == 4:
-                allftypes.remove(f)
-                return 'four-of-a-kind', [f, allftypes.pop()]
-            else:
-                return False
+        for face in allftypes:
+            if allfaces.count(face) == 4:
+                allftypes.remove(face)
+                return 'four-of-a-kind', [face, allftypes.pop()]
+            return False
 
-
+    # pylint: disable=no-self-use
     def fullhouse(self, hand):
         '''
         The function fullhouse determines whether the hand of the player
@@ -77,12 +77,11 @@ class Evaluator:
         allftypes = set(allfaces)
         if len(allftypes) != 2:
             return False
-        for f in allftypes:
-            if allfaces.count(f) == 3:
-                allftypes.remove(f)
-                return 'full-house', [f, allftypes.pop()]
-            else:
-                return False
+        for face in allftypes:
+            if allfaces.count(face) == 3:
+                allftypes.remove(face)
+                return 'full-house', [face, allftypes.pop()]
+            return False
 
 
     def flush(self, hand):
@@ -93,11 +92,11 @@ class Evaluator:
         allstypes = {hand[l].suit for l in range(len(hand))}
         if len(allstypes) == 1:
             allfaces = [hand[l].face for l in range(len(hand))]
+            # pylint: disable=unnecessary-lambda
             return 'flush', sorted(allfaces,
-                                   key=lambda f: self.face.index(f),
+                                   key=lambda face: self.face.index(face),
                                    reverse=True)
-        else:
-            return False
+        return False
 
 
     def straight(self, hand):
@@ -105,11 +104,11 @@ class Evaluator:
         The function straigh determines whether the hand of the player
         is a straight.
         '''
-        f, fs = ((self.lowace, self.lowaces) if any(card.face == '2' for card in hand)
-                 else (self.face, self.faces))
-        ordered = sorted(hand, key=lambda card: (f.index(card.face), card.suit))
+        face, faces = ((self.lowace, self.lowaces) if any(card.face == '2' for card in hand)
+                       else (self.face, self.faces))
+        ordered = sorted(hand, key=lambda card: (face.index(card.face), card.suit))
         first, rest = ordered[0], ordered[1:]
-        if ' '.join(card.face for card in ordered) in fs:
+        if ' '.join(card.face for card in ordered) in faces:
             return 'straight', ordered[-1].face
         return False
 
@@ -123,13 +122,13 @@ class Evaluator:
         allftypes = set(allfaces)
         if len(allftypes) <= 2:
             return False
-        for f in allftypes:
-            if allfaces.count(f) == 3:
-                allftypes.remove(f)
-                return ('three-of-a-kind', [f] +
-                    sorted(allftypes,
-                    key=lambda f: self.face.index(f),
-                    reverse=True))
+        for face in allftypes:
+            if allfaces.count(face) == 3:
+                allftypes.remove(face)
+                return ('three-of-a-kind', [face] +
+                        sorted(allftypes,
+                               key=lambda face: self.face.index(face),
+                               reverse=True))
         else:
             return False
 
@@ -141,7 +140,7 @@ class Evaluator:
         '''
         allfaces = [hand[l].face for l in range(len(hand))]
         allftypes = set(allfaces)
-        pairs = [f for f in allftypes if allfaces.count(f) == 2]
+        pairs = [face for face in allftypes if allfaces.count(face) == 2]
         if len(pairs) != 2:
             return False
         p0, p1 = pairs
@@ -158,12 +157,12 @@ class Evaluator:
         '''
         allfaces = [hand[l].face for l in range(len(hand))]
         allftypes = set(allfaces)
-        pairs = [f for f in allftypes if allfaces.count(f) == 2]
+        pairs = [face for face in allftypes if allfaces.count(face) == 2]
         if len(pairs) != 1:
             return False
         allftypes.remove(pairs[0])
         return 'one-pair', pairs + sorted(allftypes,
-                                          key=lambda f: self.face.index(f),
+                                          key=lambda face: self.face.index(face),
                                           reverse=True)
 
 
@@ -174,7 +173,7 @@ class Evaluator:
         '''
         allfaces = [hand[l].face for l in range(len(hand))]
         return 'high-card', sorted(allfaces,
-                                   key=lambda f: self.face.index(f),
+                                   key=lambda face: self.face.index(face),
                                    reverse=True)
 
 

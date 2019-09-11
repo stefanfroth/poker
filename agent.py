@@ -102,7 +102,7 @@ class Agent:
 
 
     # Change: This should be changed to a database table again.
-    def read_data(self, document_name):
+    def read_data(self, table_name):
         '''
         The method read_model reads the data saved into the postgres database.
 
