@@ -13,6 +13,6 @@ script:
   - pylint poker_game.py
   - pylint play.py
   - pylint train.py
-  - pylint self_play_analysis.py
-  - pylint self_play_between_versions.py
+  - pylint self_play_analysis.py --ignored-modules=scipy --ignored-modules=matplotlib.pyplot
+  - pylint self_play_between_versions.py --ignored-modules=scipy --ignored-modules=matplotlib.pyplot
   - pylint test_file.py
