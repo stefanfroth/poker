@@ -5,6 +5,7 @@ in the first 50 games and tests if the reward of the newer version is significan
 different from zero.
 '''
 
+import warnings
 import sqlalchemy as sqa
 import pandas as pd
 import numpy as np
@@ -13,6 +14,8 @@ import matplotlib.pyplot as plt
 
 from poker_game import Game
 from agent import Agent
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # db connection
 DB = f'postgres://localhost/poker'
@@ -78,12 +81,17 @@ plt.savefig(f'{OLD_VERSION}v{NEW_VERSION}.png')
 DF2 = DF[DF['agent'] == NEW_VERSION]
 DF4 = DF2[['player', 'game', 'reward', 'agent']].groupby(['player', 'agent', 'game']).mean()
 
+# One sided t-test testing whether the reward of the NEW_VERSION agent is less or
+# equal than 0. This assumes that the distribution of rewards is normal.
 STAT = stats.ttest_1samp(np.array(DF4['reward']), 0)
-PVALUE = STAT.pvalue
+PVALUE = STAT.pvalue/2
 
 if PVALUE > 0.05:
-    print('The difference in rewards between the two versions of the poker bot',
-          'are not statistically significant at a 95% confidence level.')
+    print('The Null hypothesis of the reward of the NEW_Version agent being less or equal',
+          ' to zero cannot be rejected. There is no empirical evidence that the NEW_VERSION',
+          ' agent is playing better.')
 else:
-    print('The difference in rewards between the two versions of the poker bot',
-          f'are statistically significant. The p-value is {PVALUE}.')
+    print('The Null hypothesis of the reward of the NEW_Version agent being less or equal',
+          ' to zero is rejected. This suggests that the NEW_VERSION agent is',
+          ' better at playing poker. The result is statistically significant with'
+          f'a p-value of {PVALUE}.')

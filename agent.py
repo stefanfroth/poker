@@ -11,7 +11,7 @@ from tensorflow.keras import models, layers, optimizers, utils
 from tensorflow.keras.models import model_from_json
 from tensorflow.keras.layers import Input
 from tensorflow.keras import backend as K
-import tensorflow as tf
+#import tensorflow as tf
 
 # Create database connection
 DB = 'postgres://localhost/poker'

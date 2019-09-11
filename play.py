@@ -21,7 +21,7 @@ PLAYERS = 6
 BLIND = 50
 STACK = 10000
 LIMIT = 100
-GAMES = 10
+GAMES = 20000
 DB_TABLE = 'cleanup'
 
 # Chose whether to show print statements while running the program or not.
