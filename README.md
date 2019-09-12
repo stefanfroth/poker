@@ -1,6 +1,6 @@
 # Poker
 
-[![Build Status](https://travis-ci.com/stefanfroth/poker.svg?token=s3wrUz4phpxxGfMxPpPT&branch=epsilon)](https://travis-ci.com/stefanfroth/poker)
+[![Build Status](https://travis-ci.com/stefanfroth/poker.svg?token=s3wrUz4phpxxGfMxPpPT&branch=master)](https://travis-ci.com/stefanfroth/poker)
 
 
 ## Goal
