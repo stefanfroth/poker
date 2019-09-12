@@ -23,17 +23,17 @@ DB = 'postgres://localhost/poker'
 ENGINE = sqlalchemy.create_engine(DB)
 
 
-def test_len_deck():
-    '''
-    The function test_len_deck tests that the deck always holds 52
-    unique cards.
-    '''
-    assert len(GAME.deck) == 52, 'The deck has not the right amount of cards'
-    assert len(GAME.deck) == len(set(GAME.deck)),\
-        'There are duplicates among the cards.'
-
-
-test_len_deck()
+# def test_len_deck():
+#     '''
+#     The function test_len_deck tests that the deck always holds 52
+#     unique cards.
+#     '''
+#     assert len(GAME.deck) == 52, 'The deck has not the right amount of cards'
+#     assert len(GAME.deck) == len(set(GAME.deck)),\
+#         'There are duplicates among the cards.'
+#
+#
+# test_len_deck()
 
 for _ in range(NR_OF_GAMES):
     GAME.play_one_complete_game()
