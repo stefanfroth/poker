@@ -2,7 +2,6 @@
 The module test_file defines the tests that are automatically run by Travis.
 '''
 
-import random
 import warnings
 import sqlalchemy
 import pandas as pd
@@ -11,26 +10,35 @@ from agent import Agent
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-NR_OF_PLAYERS = random.randint(1, 10)
+NR_OF_PLAYERS = 6
 BLIND = 50
 STACK = 10_000
 DB_TABLE = 'tests'
 NR_OF_GAMES = 10
 
+AGENT = Agent()
+GAME = Game(NR_OF_PLAYERS, BLIND, STACK, AGENT, DB_TABLE)
+
 DB = 'postgres://localhost/poker'
 ENGINE = sqlalchemy.create_engine(DB)
 
+
+def test_len_deck():
+    '''
+    The function test_len_deck tests that the deck always holds 52
+    unique cards.
+    '''
+    assert len(GAME.deck) == 52, 'The deck has not the right amount of cards'
+    assert len(GAME.deck) == len(set(GAME.deck)),\
+        'There are duplicates among the cards.'
+
+
+test_len_deck()
+
+for _ in range(NR_OF_GAMES):
+    GAME.play_one_complete_game()
+
 DF = pd.read_sql(DB_TABLE, ENGINE)
-
-
-def create_single_agent_game(nr_of_players):
-    '''
-    The module create_single_agent_game creates a game with a single agent
-    to avoid repetitive code.
-    '''
-    agent = Agent()
-    game = Game(nr_of_players, BLIND, STACK, agent, DB_TABLE)
-    return game
 
 
 def test_number_of_players():
@@ -38,8 +46,7 @@ def test_number_of_players():
     The function test_number_of_players tests if the class Game instantiates
     the correct number of players.
     '''
-    game = create_single_agent_game(NR_OF_PLAYERS)
-    assert len(game.players) == NR_OF_PLAYERS,\
+    assert len(GAME.players) == NR_OF_PLAYERS,\
         f'The number of players should be {NR_OF_PLAYERS}'
 
 
@@ -52,22 +59,11 @@ def test_all_agents_in_game():
     for agent in range(NR_OF_PLAYERS):
         agent = Agent()
         agents.append(agent)
-    game = Game(NR_OF_PLAYERS, BLIND, STACK, agents, DB_TABLE)
+    multiagent_game = Game(NR_OF_PLAYERS, BLIND, STACK, agents, DB_TABLE)
 
-    created_agents = [player.agent for player in game.players]
+    created_agents = [player.agent for player in multiagent_game.players]
     assert len(set(created_agents)) == NR_OF_PLAYERS,\
         f'The number of agents should equal {NR_OF_PLAYERS}'
-
-
-def test_len_deck():
-    '''
-    The function test_len_deck tests that the deck always holds 52
-    unique cards.
-    '''
-    game = create_single_agent_game(NR_OF_PLAYERS)
-    assert len(game.deck) == 52, 'The deck has not the right amount of cards'
-    assert len(game.deck) == len(set(game.deck)),\
-        'There are duplicates among the cards.'
 
 
 def test_chosen_action_exists():
@@ -77,11 +73,8 @@ def test_chosen_action_exists():
     '''
     # Change: Will be easier and make more sense to check for entries
     # in database.
-    game = create_single_agent_game(6)
-    for _ in range(NR_OF_GAMES):
-        game.play_one_complete_game()
-
-    assert list(DF.action.unique()) == [1, 2, 3],\
+    possible_actions = {1, 2, 3}
+    assert possible_actions.issuperset(set(DF.action.unique())),\
         f'Unknown actions are chosen!'
 
 
@@ -141,7 +134,6 @@ def test_bet_less_or_equal_than_stack():
 if __name__ == '__main__':
     test_number_of_players()
     test_all_agents_in_game()
-    test_len_deck()
     test_chosen_action_exists()
     test_not_all_players_inactive()
     test_no_missing_data()
