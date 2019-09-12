@@ -12,14 +12,13 @@ from tensorflow.keras import models, layers, optimizers, utils
 from tensorflow.keras.models import model_from_json
 from tensorflow.keras.layers import Input
 from tensorflow.keras import backend as K
-#import tensorflow as tf
+# import tensorflow as tf
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # Create database connection
 DB = 'postgres://localhost/poker'
 ENGINE = sqa.create_engine(DB)
-
 
 
 class Agent:
@@ -45,7 +44,6 @@ class Agent:
 
         # instantiate the model
         self.build_model()
-
 
     def build_model(self):
         '''
@@ -75,7 +73,7 @@ class Agent:
         # Other input
         state_input = Input(shape=(18,))
 
-        #Merge and add dense layer
+        # Merge and add dense layer
         merge_layer = layers.concatenate([state_input, card_output])
         merge_layer = layers.BatchNormalization()(merge_layer)
         merge_layer = layers.Dense(64, activation='relu')(merge_layer)
@@ -114,8 +112,8 @@ class Agent:
 
         return self.model
 
-
     # Change: This should be changed to a database table again.
+
     def read_data(self, table_name):
         '''
         The method read_model reads the data saved into the postgres database.
@@ -123,7 +121,6 @@ class Agent:
         :param name of the document the training data is saved in.
         '''
         self.input = pd.read_sql(table_name, con=ENGINE)
-
 
     def create_embedding_input(self):
         '''
@@ -138,7 +135,6 @@ class Agent:
                                                 'community4', 'community5']].to_numpy()
 
 #        self.input_card_embedding = np.squeeze(cards)
-
 
     def create_state_input(self):
         '''
@@ -155,7 +151,6 @@ class Agent:
                                        ]].to_numpy()
 
 #        self.input_state = np.squeeze(state)
-
 
     def train_model(self, cards, states, actions, rewards):
         '''
@@ -183,13 +178,12 @@ class Agent:
         # assert action_onehot.shape[1] == 3
         # assert cards.shape[1] == 7
         # assert states.shape[1] == 18
-        #print(f'''The states are {states}, the cards are {cards},
-        #the actions are {action_onehot} and the rewards are {rewards}.
-        #We are going to train the model using these inputs.''')
+        # print(f'''The states are {states}, the cards are {cards},
+        # the actions are {action_onehot} and the rewards are {rewards}.
+        # We are going to train the model using these inputs.''')
         loss = self.train_fn(inputs=[cards, states, action_onehot, rewards])
 
         return loss[0]
-
 
     def save(self, document_name):
         '''
@@ -202,7 +196,6 @@ class Agent:
         with open(f"weights_{document_name}_{date_string}.json", "w") as json_file:
             json_file.write(self.model.to_json())
         self.model.save_weights(f'weights_{document_name}_{date_string}.h5')
-
 
     def load(self, date_string):
         '''
