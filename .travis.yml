@@ -2,10 +2,13 @@ dist: xenial   # required for Python >= 3.7
 language: python
 python:
   - "3.7"
-# command to install dependencies
 install:
   - pip install -r requirements.txt
-# command to run tests
+services:
+  - postgresql
+before_script:
+  - psql -c "CREATE DATABASE testing_db;" -U postgres
+  #- psql -c "CREATE USER stefanroth WITH PASSWORD 'bar';" -U postgres
 script:
   - pytest
   # the ignorde-modules=tensorflow is due to a bug using pyling in combination with tensorflow > 1.13
