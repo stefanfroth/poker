@@ -289,8 +289,7 @@ class Game:
         self.players = []
 
         for player_number in range(self.nr_of_players-HUMANS):
-            if isinstance(self.agent) == list:
-                # Test: assert that the list of agents is not longer than the amount of players.
+            if isinstance(self.agent, list):
                 # Test: assert that all agents in the list are present in the game
                 print(f'Player {player_number} will be of type agent',
                       f'{self.agent[player_number%len(self.agent)]}.')

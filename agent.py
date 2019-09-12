@@ -4,6 +4,7 @@ Artificial Neural Network that is trained via Deep Reinforcement Learning.
 '''
 
 import datetime
+import warnings
 import pandas as pd
 import sqlalchemy as sqa
 import numpy as np
@@ -12,6 +13,8 @@ from tensorflow.keras.models import model_from_json
 from tensorflow.keras.layers import Input
 from tensorflow.keras import backend as K
 #import tensorflow as tf
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # Create database connection
 DB = 'postgres://localhost/poker'
