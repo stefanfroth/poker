@@ -53,6 +53,13 @@ class Player():
     she is dealt two cards. During the game she takes actions.
     '''
 
+    handrankorder = {'straight-flush': 1, 'four-of-a-kind': 2, 'full-house': 3,
+                     'flush': 4, 'straight': 5, 'three-of-a-kind': 6,
+                     'two-pair': 7, 'one-pair': 8, 'high-card': 9}
+    cardrankorder = {'a': 1, 'k': 2, 'q': 3, 'j': 4, 't': 5, '9': 6,
+                     '8': 7, '7': 8, '6': 9, '5': 10,
+                     '4': 11, '3': 12, '2': 13}
+
     # pylint: disable=too-many-instance-attributes
 
     def __init__(self, stack, blind, name, agent):
@@ -71,12 +78,6 @@ class Player():
         self.active = 1
         self.last_actions = []
         # self.best_hand = []
-        self.handrankorder = {'straight-flush': 1, 'four-of-a-kind': 2, 'full-house': 3,
-                              'flush': 4, 'straight': 5, 'three-of-a-kind': 6,
-                              'two-pair': 7, 'one-pair': 8, 'high-card': 9}
-        self.cardrankorder = {'a': 1, 'k': 2, 'q': 3, 'j': 4, 't': 5, '9': 6,
-                              '8': 7, '7': 8, '6': 9, '5': 10,
-                              '4': 11, '3': 12, '2': 13}
         self.actions = {1: 'fold', 2: 'call', 3: 'raise'}
 
         # variables for the Deep Reinforcement Learning.
@@ -248,8 +249,8 @@ class Player():
             # print([(hand[i].face, hand[i].suit) for i in range(len(hand))])
             evaluator = Evaluator(hand, PRESENTATION)
             rank, highest_card = evaluator.find_best_hand()
-            hand_values_rank.append((i, rank, self.handrankorder[rank],
-                                     [self.cardrankorder[highest_card[i]] for i in range(len(highest_card))], highest_card, self.name))
+            hand_values_rank.append((i, rank, handrankorder[rank],
+                                     [cardrankorder[highest_card[i]] for i in range(len(highest_card))], highest_card, self.name))
 
         ranked = sorted(hand_values_rank, key=lambda x: (x[2], x[3]), reverse=False)
         if VERBOSE == 1:
