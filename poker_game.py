@@ -249,8 +249,8 @@ class Player():
             # print([(hand[i].face, hand[i].suit) for i in range(len(hand))])
             evaluator = Evaluator(hand, PRESENTATION)
             rank, highest_card = evaluator.find_best_hand()
-            hand_values_rank.append((i, rank, handrankorder[rank],
-                                     [cardrankorder[highest_card[i]] for i in range(len(highest_card))], highest_card, self.name))
+            hand_values_rank.append((i, rank, self.handrankorder[rank],
+                                     [self.cardrankorder[highest_card[i]] for i in range(len(highest_card))], highest_card, self.name))
 
         ranked = sorted(hand_values_rank, key=lambda x: (x[2], x[3]), reverse=False)
         if VERBOSE == 1:
