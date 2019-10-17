@@ -52,6 +52,7 @@ class Player():
     The player has an initial stack of money and at the beginning of each game
     she is dealt two cards. During the game she takes actions.
     '''
+    # pylint: disable=too-many-instance-attributes
 
     handrankorder = {'straight-flush': 1, 'four-of-a-kind': 2, 'full-house': 3,
                      'flush': 4, 'straight': 5, 'three-of-a-kind': 6,
@@ -59,8 +60,6 @@ class Player():
     cardrankorder = {'a': 1, 'k': 2, 'q': 3, 'j': 4, 't': 5, '9': 6,
                      '8': 7, '7': 8, '6': 9, '5': 10,
                      '4': 11, '3': 12, '2': 13}
-
-    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, stack, blind, name, agent):
         # stack_original will always save the original stack of the player
